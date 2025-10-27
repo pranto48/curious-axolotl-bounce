@@ -13,9 +13,8 @@ RUN apt-get update && apt-get install -y \
     libxml2-dev \
     nmap \
     mariadb-client-compat \
-    # Install Node.js and npm for React build
-    nodejs \
-    npm \
+    curl \
+    gnupg \
     && rm -rf /var/lib/apt/lists/*
 
 # Install PHP extensions
@@ -24,6 +23,10 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
 
 # Enable Apache modules
 RUN a2enmod rewrite
+
+# Install Node.js and npm from NodeSource (Node.js 20 LTS)
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs
 
 # Copy application files from the current directory
 COPY . /var/www/html/
@@ -34,7 +37,8 @@ RUN chown -R www-data:www-data /var/www/html \
 
 # Build the React application
 WORKDIR /var/www/html
-RUN npm install
+RUN npm cache clean --force
+RUN npm ci
 RUN npm run build
 
 # Expose port 2266 (or whatever port your app runs on)
