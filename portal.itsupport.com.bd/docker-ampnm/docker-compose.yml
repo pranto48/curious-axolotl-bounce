@@ -7,7 +7,7 @@ services:
       dockerfile: Dockerfile
     # This entrypoint ensures the script is executable and then runs it.
     # The script configures and starts the Apache server on the correct port.
-    entrypoint: ["/bin/sh", "-c", "chmod +x /var/www/html/docker-entrypoint.sh && /var/www/html/docker-entrypoint.sh"]
+    entrypoint: ["/bin/sh", "-c", "chmod +x /usr/local/bin/docker-entrypoint.sh && /usr/local/bin/docker-entrypoint.sh"]
     volumes:
       - ./:/var/www/html/
     depends_on:
@@ -22,6 +22,8 @@ services:
       - DB_PASSWORD=password
       - MYSQL_ROOT_PASSWORD=rootpassword
       - ADMIN_PASSWORD=password
+      - LICENSE_API_URL=https://portal.itsupport.com.bd/verify_license.php
+      - APP_LICENSE_KEY=AMPNM-YOUR-LICENSE-KEY-HERE # IMPORTANT: Replace with a real license key from your portal
     restart: unless-stopped
     # network_mode: host is required for the ping command to work correctly.
     network_mode: "host"
