@@ -33,11 +33,7 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
 RUN mkdir -p /var/www/html/react-app
 WORKDIR /var/www/html/react-app
 
-# DEBUG: List contents of the build context root to verify file presence
-# This command runs on the host's build context before copying
-RUN ls -la /
-
-# Copy React application files from the build context root
+# Copy React application files from the build context root (which is the project root)
 COPY package.json ./
 # Removed: COPY package-lock.json ./ (npm install will generate if needed)
 COPY src ./src
@@ -46,10 +42,10 @@ COPY tailwind.config.ts ./tailwind.config.ts
 COPY postcss.config.js ./postcss.config.js
 COPY tsconfig.json ./tsconfig.json
 COPY vite.config.ts ./vite.config.ts
-COPY eslint.config.js ./ # Ensure this file exists at the root of your project
+# Removed: COPY eslint.config.js ./ # This file seems to be causing issues or is missing
 COPY .gitignore ./
 
-# Verify files are copied (this will list files *inside* the container's WORKDIR)
+# Verify files are copied (this will list files *inside* the container's WORKDIR /var/www/html/react-app)
 RUN ls -la
 
 # Build the React application
