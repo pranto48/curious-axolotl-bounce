@@ -231,6 +231,7 @@ function getDockerfileContent() {
         "    libxml2-dev \\",
         "    nmap \\", 
         "    mariadb-client-compat \\", # Changed from mysql-client to mariadb-client-compat
+        "    curl \\",
         "    && rm -rf /var/lib/apt/lists/*",
         "",
         "# Install PHP extensions",
@@ -240,8 +241,8 @@ function getDockerfileContent() {
         "# Enable Apache modules",
         "RUN a2enmod rewrite",
         "",
-        "# Copy application files from the ampnm-app-source directory",
-        "COPY ampnm-app-source/ /var/www/html/",
+        "# Copy application files from the current directory",
+        "COPY ./ /var/www/html/",
         "",
         "# Copy the entrypoint script from the build context root",
         "COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh",
