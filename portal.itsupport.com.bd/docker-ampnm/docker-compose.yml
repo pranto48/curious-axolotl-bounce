@@ -3,25 +3,28 @@ version: '3.8'
 services:
   app:
     build:
-      context: . # Build context is the docker-ampnm folder
+      context: .
       dockerfile: Dockerfile
+    # This entrypoint ensures the script is executable and then runs it.
+    # The script configures and starts the Apache server on the correct port.
+    entrypoint: ["/bin/sh", "-c", "chmod +x /var/www/html/docker-entrypoint.sh && /var/www/html/docker-entrypoint.sh"]
     volumes:
-      - ./:/var/www/html/ # Mount the current directory into the container
+      - ./:/var/www/html/
     depends_on:
       db:
         condition: service_healthy
     environment:
-      - DB_HOST=db
+      # We use 127.0.0.1 because network_mode: host connects the app container
+      # directly to the host's network, so it sees the database on localhost.
+      - DB_HOST=127.0.0.1
       - DB_NAME=network_monitor
       - DB_USER=user
       - DB_PASSWORD=password
       - MYSQL_ROOT_PASSWORD=rootpassword
       - ADMIN_PASSWORD=password
-      - LICENSE_API_URL=https://portal.itsupport.com.bd/verify_license.php # Ensure this matches your deployment
-      - APP_LICENSE_KEY=YOUR_LICENSE_KEY_HERE # Replace with the actual license key
-    ports:
-      - "2266:2266"
     restart: unless-stopped
+    # network_mode: host is required for the ping command to work correctly.
+    network_mode: "host"
 
   db:
     image: mysql:8.0
@@ -34,6 +37,7 @@ services:
     volumes:
       - db_data:/var/lib/mysql
     ports:
+      # Expose the database port to the host for external tools if needed
       - "3306:3306"
     restart: unless-stopped
     healthcheck:
