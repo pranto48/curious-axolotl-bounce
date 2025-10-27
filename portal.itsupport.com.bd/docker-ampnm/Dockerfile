@@ -42,10 +42,15 @@ COPY tailwind.config.ts ./tailwind.config.ts
 COPY postcss.config.js ./postcss.config.js
 COPY tsconfig.json ./tsconfig.json
 COPY vite.config.ts ./vite.config.ts
+COPY .eslintrc.cjs ./ # Ensure ESLint config is copied if present
+COPY .gitignore ./ # Ensure .gitignore is copied
+
+# Verify files are copied
+RUN ls -la
 
 # Build the React application
 RUN npm cache clean --force
-RUN npm install
+RUN npm install --legacy-peer-deps # Use --legacy-peer-deps for more robust dependency installation
 RUN npm run build
 
 # --- PHP Application Setup ---
