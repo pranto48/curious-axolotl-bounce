@@ -5,11 +5,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    # This entrypoint ensures the script is executable and then runs it.
-    # The script configures and starts the Apache server on the correct port.
-    entrypoint: ["/bin/sh", "-c", "chmod +x /var/www/html/docker-entrypoint.sh && /var/www/html/docker-entrypoint.sh"]
     volumes:
-      - ./:/var/www/html/
+      - ./:/var/www/html/ # Mount the current directory (docker-ampnm) into the container's web root
     depends_on:
       db:
         condition: service_healthy
@@ -25,6 +22,8 @@ services:
     restart: unless-stopped
     # network_mode: host is required for the ping command to work correctly.
     network_mode: "host"
+    ports:
+      - "2266:2266" # Main app will now run on port 2266
 
   db:
     image: mysql:8.0
