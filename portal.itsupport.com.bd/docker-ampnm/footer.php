@@ -51,7 +51,37 @@
 
         // Initialize page-specific JS
         if (page === 'index.php') {
-            initDashboard();
+            // Dynamically load React app assets for index.php
+            const reactBuildPath = '/dist/index.html'; // Path to the built React index.html
+            fetch(reactBuildPath)
+                .then(response => response.text())
+                .then(html => {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    
+                    // Extract and inject CSS link
+                    const reactLink = doc.querySelector('link[rel="stylesheet"]');
+                    if (reactLink) {
+                        const newLink = document.createElement('link');
+                        newLink.rel = 'stylesheet';
+                        newLink.crossOrigin = 'anonymous';
+                        newLink.href = '/dist' + reactLink.getAttribute('href');
+                        document.head.appendChild(newLink);
+                    }
+
+                    // Extract and inject JS script
+                    const reactScript = doc.querySelector('script[type="module"]');
+                    if (reactScript) {
+                        const newScript = document.createElement('script');
+                        newScript.type = 'module';
+                        newScript.crossOrigin = 'anonymous';
+                        newScript.src = '/dist' + reactScript.getAttribute('src');
+                        document.body.appendChild(newScript);
+                    }
+                })
+                .catch(error => console.error('Failed to load React app assets:', error));
+
+            // initDashboard(); // This is for the old PHP dashboard, React app will handle its own dashboard
         } else if (page === 'devices.php') {
             initDevices();
         } else if (page === 'history.php') {

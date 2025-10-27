@@ -13,6 +13,9 @@ RUN apt-get update && apt-get install -y \
     libxml2-dev \
     nmap \
     mariadb-client-compat \
+    # Install Node.js and npm for React build
+    nodejs \
+    npm \
     && rm -rf /var/lib/apt/lists/*
 
 # Install PHP extensions
@@ -28,6 +31,11 @@ COPY . /var/www/html/
 # Set permissions
 RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 755 /var/www/html
+
+# Build the React application
+WORKDIR /var/www/html
+RUN npm install
+RUN npm run build
 
 # Expose port 2266 (or whatever port your app runs on)
 EXPOSE 2266
