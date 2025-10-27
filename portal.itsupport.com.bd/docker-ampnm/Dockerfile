@@ -33,7 +33,12 @@ RUN chown -R www-data:www-data /var/www/html \
 EXPOSE 2266
 
 # Update Apache configuration to listen on 2266
-RUN echo "Listen 2266" >> /etc/apache2/ports.conf \
+# First, remove any existing Listen directives for 80 or 2266
+RUN sed -i '/^Listen 80/d' /etc/apache2/ports.conf \
+    && sed -i '/^Listen 2266/d' /etc/apache2/ports.conf \
+    # Then, add the correct Listen directive
+    && echo "Listen 2266" >> /etc/apache2/ports.conf \
+    # And update VirtualHost configurations
     && sed -i -e 's/VirtualHost \*:80/VirtualHost \*:2266/g' /etc/apache2/sites-available/000-default.conf \
     && sed -i -e 's/VirtualHost \*:80/VirtualHost \*:2266/g' /etc/apache2/sites-enabled/000-default.conf
 
