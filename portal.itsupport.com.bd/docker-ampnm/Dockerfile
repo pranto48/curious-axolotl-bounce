@@ -24,40 +24,10 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
 # Enable Apache modules
 RUN a2enmod rewrite
 
-# Install Node.js and npm from NodeSource (Node.js 20 LTS)
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
-    && apt-get install -y nodejs
-
-# --- React Application Build ---
-# Create a dedicated directory for the React application
-RUN mkdir -p /var/www/html/react-app
-WORKDIR /var/www/html/react-app
-
-# Copy React application files from the build context root (which is the project root)
-COPY package.json ./
-COPY index.html ./ # Explicitly copy index.html to the root of the react-app directory
-COPY src ./src
-COPY public ./public
-COPY tailwind.config.ts ./tailwind.config.ts
-COPY postcss.config.js ./postcss.config.js
-COPY tsconfig.json ./tsconfig.json
-COPY vite.config.ts ./vite.config.ts
-COPY .gitignore ./
-
-# Verify files are copied (this will list files *inside* the container's WORKDIR /var/www/html/react-app)
-RUN ls -la
-
-# Build the React application
-RUN npm cache clean --force
-RUN npm install --legacy-peer-deps # Use --legacy-peer-deps for more robust dependency installation
-RUN npm run build
-
 # --- PHP Application Setup ---
-# Create a subdirectory for the PHP application's DocumentRoot
-RUN mkdir -p /var/www/html/php-app
-
 # Copy PHP application files from the build context's 'portal.itsupport.com.bd/docker-ampnm/' folder
-COPY portal.itsupport.com.bd/docker-ampnm/ /var/www/html/php-app/
+# directly to Apache's default DocumentRoot
+COPY portal.itsupport.com.bd/docker-ampnm/ /var/www/html/
 
 # Set permissions for all files
 RUN chown -R www-data:www-data /var/www/html \
@@ -66,22 +36,19 @@ RUN chown -R www-data:www-data /var/www/html \
 # Expose port 2266
 EXPOSE 2266
 
-# Update Apache configuration to listen on 2266 and set DocumentRoot to php-app
+# Update Apache configuration to listen on 2266
 RUN sed -i '/^Listen 80/d' /etc/apache2/ports.conf \
     && sed -i '/^Listen 2266/d' /etc/apache2/ports.conf \
     && echo "Listen 2266" >> /etc/apache2/ports.conf \
     && sed -i -e 's/VirtualHost \*:80/VirtualHost \*:2266/g' /etc/apache2/sites-available/000-default.conf \
-    && sed -i -e 's/VirtualHost \*:80/VirtualHost \*:2266/g' /etc/apache2/sites-enabled/000-default.conf \
-    && sed -i -e 's|DocumentRoot /var/www/html|DocumentRoot /var/www/html/php-app|g' /etc/apache2/sites-available/000-default.conf \
-    && sed -i -e 's|DocumentRoot /var/www/html|DocumentRoot /var/www/html/php-app|g' /etc/apache2/sites-enabled/000-default.conf \
-    && sed -i -e 's|<Directory /var/www/html>|<Directory /var/www/html/php-app>|g' /etc/apache2/apache2.conf
+    && sed -i -e 's/VirtualHost \*:80/VirtualHost \*:2266/g' /etc/apache2/sites-enabled/000-default.conf
 
-# Ensure the uploads directory exists and has correct permissions (relative to php-app DocumentRoot)
-RUN mkdir -p /var/www/html/php-app/uploads/icons \
-    mkdir -p /var/www/html/php-app/uploads/map_backgrounds \
-    mkdir -p /var/www/html/php-app/uploads/backups \
-    && chown -R www-data:www-data /var/www/html/php-app/uploads \
-    && chmod -R 775 /var/www/html/php-app/uploads
+# Ensure the uploads directory exists and has correct permissions (relative to new DocumentRoot)
+RUN mkdir -p /var/www/html/uploads/icons \
+    mkdir -p /var/www/html/uploads/map_backgrounds \
+    mkdir -p /var/www/html/uploads/backups \
+    && chown -R www-data:www-data /var/www/html/uploads \
+    && chmod -R 775 /var/www/html/uploads
 
-# Use the entrypoint script from the the php-app subdirectory
-ENTRYPOINT ["/var/www/html/php-app/docker-entrypoint.sh"]
+# Use the entrypoint script from the DocumentRoot
+ENTRYPOINT ["/var/www/html/docker-entrypoint.sh"]

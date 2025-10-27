@@ -51,41 +51,7 @@
 
         // Initialize page-specific JS
         if (page === 'index.php') {
-            // Dynamically load React app assets for index.php
-            // Path is now relative to the DocumentRoot, which is /var/www/html/php-app
-            // The dist folder is at /var/www/html/react-app/dist, so relative path is ../react-app/dist
-            const reactBuildPath = '../react-app/dist/index.html'; 
-            fetch(reactBuildPath)
-                .then(response => response.text())
-                .then(html => {
-                    const parser = new DOMParser();
-                    const doc = parser.parseFromString(html, 'text/html');
-                    
-                    // Extract and inject CSS link
-                    const reactLink = doc.querySelector('link[rel="stylesheet"]');
-                    if (reactLink) {
-                        const newLink = document.createElement('link');
-                        newLink.rel = 'stylesheet';
-                        newLink.crossOrigin = 'anonymous';
-                        // Adjust href to be relative to the DocumentRoot
-                        newLink.href = '../react-app/dist' + reactLink.getAttribute('href');
-                        document.head.appendChild(newLink);
-                    }
-
-                    // Extract and inject JS script
-                    const reactScript = doc.querySelector('script[type="module"]');
-                    if (reactScript) {
-                        const newScript = document.createElement('script');
-                        newScript.type = 'module';
-                        newScript.crossOrigin = 'anonymous';
-                        // Adjust src to be relative to the DocumentRoot
-                        newScript.src = '../react-app/dist' + reactScript.getAttribute('src');
-                        document.body.appendChild(newScript);
-                    }
-                })
-                .catch(error => console.error('Failed to load React app assets:', error));
-
-            // initDashboard(); // This is for the old PHP dashboard, React app will handle its own dashboard
+            initDashboard();
         } else if (page === 'devices.php') {
             initDevices();
         } else if (page === 'history.php') {
