@@ -28,27 +28,31 @@ RUN a2enmod rewrite
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y nodejs
 
-# Create a dedicated directory for the entire application root within the container
-RUN mkdir -p /var/www/html/app-root
-WORKDIR /var/www/html/app-root
+# Create a dedicated directory for the React application
+RUN mkdir -p /var/www/html/react-app
+WORKDIR /var/www/html/react-app
 
-# Copy the entire build context (which is 'portal.itsupport.com.bd/' from docker-compose.yml)
-# into /var/www/html/app-root. This ensures all files are present for React build.
-COPY . .
+# Copy React application files from the build context root
+# (which is portal.itsupport.com.bd/)
+COPY package.json ./
+COPY package-lock.json ./
+COPY src ./src
+COPY public ./public
+COPY tailwind.config.ts ./tailwind.config.ts
+COPY postcss.config.js ./postcss.config.js
+COPY tsconfig.json ./tsconfig.json
+COPY vite.config.ts ./vite.config.ts
 
 # Build the React application
 RUN npm cache clean --force
-RUN npm ci
+RUN npm install # Changed from npm ci to npm install
 RUN npm run build
 
 # Create a subdirectory for the PHP application's DocumentRoot
 RUN mkdir -p /var/www/html/php-app
 
-# Move the PHP application files from the copied 'docker-ampnm' folder
-# into the new php-app DocumentRoot
-RUN mv /var/www/html/app-root/docker-ampnm/* /var/www/html/php-app/
-# Also move the .gitkeep file if it exists
-RUN if [ -f /var/www/html/app-root/docker-ampnm/.gitkeep ]; then mv /var/www/html/app-root/docker-ampnm/.gitkeep /var/www/html/php-app/; fi
+# Copy PHP application files from the build context's 'docker-ampnm' folder
+COPY docker-ampnm/ /var/www/html/php-app/
 
 # Set permissions for all files
 RUN chown -R www-data:www-data /var/www/html \
