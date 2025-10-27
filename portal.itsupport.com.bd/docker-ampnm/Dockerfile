@@ -42,7 +42,7 @@ COPY tailwind.config.ts ./tailwind.config.ts
 COPY postcss.config.js ./postcss.config.js
 COPY tsconfig.json ./tsconfig.json
 COPY vite.config.ts ./vite.config.ts
-COPY .eslintrc.cjs ./ # Ensure ESLint config is copied if present
+COPY eslint.config.js ./ # Corrected: Copy eslint.config.js
 COPY .gitignore ./ # Ensure .gitignore is copied
 
 # Verify files are copied
