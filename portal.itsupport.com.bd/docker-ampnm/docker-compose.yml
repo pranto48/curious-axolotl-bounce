@@ -3,10 +3,8 @@ version: '3.8'
 services:
   app:
     build:
-      context: .. # Build context is the parent directory (portal.itsupport.com.bd/)
-      dockerfile: docker-ampnm/Dockerfile # Specify the Dockerfile path relative to the new context
-    # Removed the volumes mount to prevent build artifacts from being overwritten at runtime.
-    # All necessary files will be copied into the image during the build process.
+      context: ../../ # Build context is now the root of the entire project
+      dockerfile: portal.itsupport.com.bd/docker-ampnm/Dockerfile # Specify the Dockerfile path relative to the new context
     depends_on:
       db:
         condition: service_healthy

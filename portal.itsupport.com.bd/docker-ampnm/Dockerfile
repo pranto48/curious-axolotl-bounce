@@ -28,12 +28,12 @@ RUN a2enmod rewrite
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y nodejs
 
+# --- React Application Build ---
 # Create a dedicated directory for the React application
 RUN mkdir -p /var/www/html/react-app
 WORKDIR /var/www/html/react-app
 
 # Copy React application files from the build context root
-# (which is portal.itsupport.com.bd/)
 COPY package.json ./
 COPY package-lock.json ./
 COPY src ./src
@@ -45,14 +45,15 @@ COPY vite.config.ts ./vite.config.ts
 
 # Build the React application
 RUN npm cache clean --force
-RUN npm install # Changed from npm ci to npm install
+RUN npm install
 RUN npm run build
 
+# --- PHP Application Setup ---
 # Create a subdirectory for the PHP application's DocumentRoot
 RUN mkdir -p /var/www/html/php-app
 
-# Copy PHP application files from the build context's 'docker-ampnm' folder
-COPY docker-ampnm/ /var/www/html/php-app/
+# Copy PHP application files from the build context's 'portal.itsupport.com.bd/docker-ampnm/' folder
+COPY portal.itsupport.com.bd/docker-ampnm/ /var/www/html/php-app/
 
 # Set permissions for all files
 RUN chown -R www-data:www-data /var/www/html \
