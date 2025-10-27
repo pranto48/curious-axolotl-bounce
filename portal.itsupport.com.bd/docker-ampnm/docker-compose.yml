@@ -5,20 +5,21 @@ services:
     build:
       context: ../../ # Build context is now the root of the entire project
       dockerfile: portal.itsupport.com.bd/docker-ampnm/Dockerfile # Specify the Dockerfile path relative to the new context
+    volumes:
+      - ./portal.itsupport.com.bd/docker-ampnm/:/var/www/html/ # Mount the PHP application source into the container
     depends_on:
       db:
         condition: service_healthy
     environment:
-      - DB_HOST=127.0.0.1
+      - DB_HOST=db # Changed from 127.0.0.1 to 'db' (the service name)
       - DB_NAME=network_monitor
       - DB_USER=user
       - DB_PASSWORD=password
       - MYSQL_ROOT_PASSWORD=rootpassword
       - ADMIN_PASSWORD=password
-    restart: unless-stopped
-    network_mode: "host"
     ports:
       - "2266:2266" # Main app will now run on port 2266
+    restart: unless-stopped
 
   db:
     image: mysql:8.0
