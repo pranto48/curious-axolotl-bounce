@@ -3,10 +3,13 @@ version: '3.8'
 services:
   app:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: .. # Set build context to the parent directory (portal.itsupport.com.bd/)
+      dockerfile: docker-ampnm/Dockerfile # Specify the Dockerfile path relative to the new context
     volumes:
-      - ./:/var/www/html/ # Mount the current directory (docker-ampnm) into the container's web root
+      # Mount the entire project root into /var/www/html/
+      # This means the PHP app will be at /var/www/html/docker-ampnm/
+      # And the React app source will be at /var/www/html/src/
+      - ../:/var/www/html/
     depends_on:
       db:
         condition: service_healthy
