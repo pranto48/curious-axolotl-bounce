@@ -53,8 +53,8 @@
         if (page === 'index.php') {
             // Dynamically load React app assets for index.php
             // Path is now relative to the DocumentRoot, which is /var/www/html/php-app
-            // The dist folder is at /var/www/html/dist, so relative path is ../dist
-            const reactBuildPath = '../dist/index.html'; 
+            // The dist folder is at /var/www/html/app-root/dist, so relative path is ../app-root/dist
+            const reactBuildPath = '../app-root/dist/index.html'; 
             fetch(reactBuildPath)
                 .then(response => response.text())
                 .then(html => {
@@ -68,7 +68,7 @@
                         newLink.rel = 'stylesheet';
                         newLink.crossOrigin = 'anonymous';
                         // Adjust href to be relative to the DocumentRoot
-                        newLink.href = '../dist' + reactLink.getAttribute('href');
+                        newLink.href = '../app-root/dist' + reactLink.getAttribute('href');
                         document.head.appendChild(newLink);
                     }
 
@@ -79,7 +79,7 @@
                         newScript.type = 'module';
                         newScript.crossOrigin = 'anonymous';
                         // Adjust src to be relative to the DocumentRoot
-                        newScript.src = '../dist' + reactScript.getAttribute('src');
+                        newScript.src = '../app-root/dist' + reactScript.getAttribute('src');
                         document.body.appendChild(newScript);
                     }
                 })

@@ -28,36 +28,29 @@ RUN a2enmod rewrite
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y nodejs
 
-# Set working directory for the React app build
-WORKDIR /var/www/html
+# Create a dedicated directory for the entire application root within the container
+RUN mkdir -p /var/www/html/app-root
+WORKDIR /var/www/html/app-root
 
-# Copy only package.json and package-lock.json first for npm ci
-# These are in the root of the build context (portal.itsupport.com.bd/)
-COPY package.json ./
-COPY package-lock.json ./
+# Copy the entire build context (which is 'portal.itsupport.com.bd/' from docker-compose.yml)
+# into /var/www/html/app-root. This ensures all files are present for React build.
+COPY . .
 
 # Build the React application
 RUN npm cache clean --force
 RUN npm ci
 RUN npm run build
 
-# Copy the rest of the React app source files (after build)
-# These are also in the root of the build context
-COPY src ./src
-COPY public ./public
-COPY tailwind.config.ts ./tailwind.config.ts
-COPY postcss.config.js ./postcss.config.js
-COPY tsconfig.json ./tsconfig.json
-COPY vite.config.ts ./vite.config.ts
-
-# Create a subdirectory for the PHP application
+# Create a subdirectory for the PHP application's DocumentRoot
 RUN mkdir -p /var/www/html/php-app
 
-# Copy PHP application files into the php-app subdirectory
-# These are in the 'docker-ampnm/' folder relative to the build context root
-COPY docker-ampnm/ /var/www/html/php-app/
+# Move the PHP application files from the copied 'docker-ampnm' folder
+# into the new php-app DocumentRoot
+RUN mv /var/www/html/app-root/docker-ampnm/* /var/www/html/php-app/
+# Also move the .gitkeep file if it exists
+RUN if [ -f /var/www/html/app-root/docker-ampnm/.gitkeep ]; then mv /var/www/html/app-root/docker-ampnm/.gitkeep /var/www/html/php-app/; fi
 
-# Set permissions for both React and PHP app files
+# Set permissions for all files
 RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 755 /var/www/html
 
@@ -74,12 +67,12 @@ RUN sed -i '/^Listen 80/d' /etc/apache2/ports.conf \
     && sed -i -e 's|DocumentRoot /var/www/html|DocumentRoot /var/www/html/php-app|g' /etc/apache2/sites-enabled/000-default.conf \
     && sed -i -e 's|<Directory /var/www/html>|<Directory /var/www/html/php-app>|g' /etc/apache2/apache2.conf
 
-# Ensure the uploads directory exists and has correct permissions (relative to php-app)
+# Ensure the uploads directory exists and has correct permissions (relative to php-app DocumentRoot)
 RUN mkdir -p /var/www/html/php-app/uploads/icons \
     mkdir -p /var/www/html/php-app/uploads/map_backgrounds \
     mkdir -p /var/www/html/php-app/uploads/backups \
     && chown -R www-data:www-data /var/www/html/php-app/uploads \
     && chmod -R 775 /var/www/html/php-app/uploads
 
-# Use the entrypoint script from the php-app subdirectory
+# Use the entrypoint script from the the php-app subdirectory
 ENTRYPOINT ["/var/www/html/php-app/docker-entrypoint.sh"]

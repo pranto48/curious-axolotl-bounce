@@ -3,19 +3,14 @@ version: '3.8'
 services:
   app:
     build:
-      context: .. # Set build context to the parent directory (portal.itsupport.com.bd/)
+      context: .. # Build context is the parent directory (portal.itsupport.com.bd/)
       dockerfile: docker-ampnm/Dockerfile # Specify the Dockerfile path relative to the new context
-    volumes:
-      # Mount the entire project root into /var/www/html/
-      # This means the PHP app will be at /var/www/html/docker-ampnm/
-      # And the React app source will be at /var/www/html/src/
-      - ../:/var/www/html/
+    # Removed the volumes mount to prevent build artifacts from being overwritten at runtime.
+    # All necessary files will be copied into the image during the build process.
     depends_on:
       db:
         condition: service_healthy
     environment:
-      # We use 127.0.0.1 because network_mode: host connects the app container
-      # directly to the host's network, so it sees the database on localhost.
       - DB_HOST=127.0.0.1
       - DB_NAME=network_monitor
       - DB_USER=user
@@ -23,7 +18,6 @@ services:
       - MYSQL_ROOT_PASSWORD=rootpassword
       - ADMIN_PASSWORD=password
     restart: unless-stopped
-    # network_mode: host is required for the ping command to work correctly.
     network_mode: "host"
     ports:
       - "2266:2266" # Main app will now run on port 2266
@@ -39,7 +33,6 @@ services:
     volumes:
       - db_data:/var/lib/mysql
     ports:
-      # Expose the database port to the host for external tools if needed
       - "3306:3306"
     restart: unless-stopped
     healthcheck:
