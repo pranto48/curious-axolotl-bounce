@@ -35,14 +35,13 @@ WORKDIR /var/www/html/react-app
 
 # Copy React application files from the build context root (which is the project root)
 COPY package.json ./
-# Removed: COPY package-lock.json ./ (npm install will generate if needed)
+COPY index.html ./ # Explicitly copy index.html to the root of the react-app directory
 COPY src ./src
 COPY public ./public
 COPY tailwind.config.ts ./tailwind.config.ts
 COPY postcss.config.js ./postcss.config.js
 COPY tsconfig.json ./tsconfig.json
 COPY vite.config.ts ./vite.config.ts
-# Removed: COPY eslint.config.js ./ # This file seems to be causing issues or is missing
 COPY .gitignore ./
 
 # Verify files are copied (this will list files *inside* the container's WORKDIR /var/www/html/react-app)
