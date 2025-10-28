@@ -5,18 +5,18 @@ $username = 'root'; // Setup script needs root privileges to create DB and table
 $password = getenv('MYSQL_ROOT_PASSWORD') ?: ''; // Get root password from Docker env
 $dbname = getenv('DB_NAME') ?: 'network_monitor';
 
-// Include db_helpers for getDbConnection and generateUuid
-require_once __DIR__ . '/includes/db_helpers.php';
-// Include app_settings for updateAppSetting
-require_once __DIR__ . '/includes/app_settings.php';
-
 function message($text, $is_error = false) {
     $color = $is_error ? '#ef4444' : '#22c55e';
     echo "<p style='color: $color; margin: 4px 0; font-family: monospace;'>$text</p>";
 }
 
 // Function to generate a UUID (Universally Unique Identifier)
-// This function is now in includes/db_helpers.php
+function generateUuid() {
+    $data = random_bytes(16);
+    $data[6] = chr(ord($data[6]) & 0x0f | 0x40); // set version to 0100
+    $data[8] = chr(ord(ord($data[8]) & 0x3f | 0x80)); // set bits 6-7 to 10
+    return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -307,9 +307,21 @@ try {
     }
 
     // Initialize app_settings for license management
-    // Use updateAppSetting from app_settings.php
-    updateAppSetting('installation_id', generateUuid()); // Use generateUuid from db_helpers.php
-    updateAppSetting('app_license_key', APP_LICENSE_KEY_ENV); // Use APP_LICENSE_KEY_ENV from config.php
+    $settings_to_init = [
+        'installation_id' => generateUuid(),
+        'app_license_key' => '' // Initially empty, user will fill this
+    ];
+
+    foreach ($settings_to_init as $key => $value) {
+        $stmt = $pdo->prepare("SELECT setting_value FROM `app_settings` WHERE setting_key = ?");
+        $stmt->execute([$key]);
+        if (!$stmt->fetch()) {
+            $stmt = $pdo->prepare("INSERT INTO `app_settings` (setting_key, setting_value) VALUES (?, ?)");
+            $stmt->execute([$key, $value]);
+            message("Initialized app setting: '$key'.");
+        }
+    }
+
 
     echo "<h2 style='color: #06b6d4; font-family: sans-serif;'>Database setup completed successfully!</h2>";
     echo "<p style='color: #94a3b8;'><span class='loader'></span>Redirecting to the application in 3 seconds...</p>";
