@@ -5,12 +5,7 @@
 define('LICENSE_VERIFICATION_INTERVAL', 300); // 5 minutes
 
 // Function to generate a UUID (Universally Unique Identifier)
-function generateUuid() {
-    $data = random_bytes(16);
-    $data[6] = chr(ord($data[6]) & 0x0f | 0x40); // set version to 0100
-    $data[8] = chr(ord(ord($data[8]) & 0x3f | 0x80)); // set bits 6-7 to 10
-    return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
-}
+// This function is now in db_helpers.php and included via bootstrap.php
 
 /**
  * Performs the actual license verification with the portal API.
@@ -32,8 +27,8 @@ function verifyLicenseWithPortal() {
         return; // Use cached data
     }
 
-    $app_license_key = getAppSetting('app_license_key');
-    $installation_id = getAppSetting('installation_id');
+    $app_license_key = getAppLicenseKey(); // Use getAppLicenseKey from app_settings.php
+    $installation_id = getInstallationId(); // Use getInstallationId from app_settings.php
     $user_id = $_SESSION['user_id']; // Now guaranteed to be set
 
     error_log("DEBUG: License verification attempt. User ID: {$user_id}, Installation ID: {$installation_id}, License Key: " . (empty($app_license_key) ? 'EMPTY' : 'PRESENT'));
@@ -50,7 +45,7 @@ function verifyLicenseWithPortal() {
     }
 
     // Get current device count for the user
-    $pdo = getDbConnection();
+    $pdo = getDbConnection(); // Use getDbConnection from db_helpers.php
     $stmt = $pdo->prepare("SELECT COUNT(*) FROM `devices` WHERE user_id = ?");
     $stmt->execute([$user_id]);
     $current_device_count = $stmt->fetchColumn();
@@ -149,16 +144,16 @@ function verifyLicenseWithPortal() {
 // --- Main License Manager Logic ---
 
 // 1. Ensure installation_id exists
-$installation_id = getAppSetting('installation_id');
+$installation_id = getInstallationId(); // Use getInstallationId from app_settings.php
 if (empty($installation_id)) {
-    $new_uuid = generateUuid();
-    updateAppSetting('installation_id', $new_uuid);
+    $new_uuid = generateUuid(); // Use generateUuid from db_helpers.php
+    updateAppSetting('installation_id', $new_uuid); // Use updateAppSetting from app_settings.php
     // Reload to ensure it's set for this request
     $installation_id = $new_uuid;
 }
 
 // 2. Check if license key is configured
-$app_license_key = getAppSetting('app_license_key');
+$app_license_key = getAppLicenseKey(); // Use getAppLicenseKey from app_settings.php
 
 // If license key is not set, redirect to setup page
 if (empty($app_license_key)) {
@@ -174,7 +169,7 @@ if (empty($app_license_key)) {
 
 // Store current device count in session for easy access
 if (isset($_SESSION['user_id'])) {
-    $pdo = getDbConnection();
+    $pdo = getDbConnection(); // Use getDbConnection from db_helpers.php
     $stmt = $pdo->prepare("SELECT COUNT(*) FROM `devices` WHERE user_id = ?");
     $stmt->execute([$_SESSION['user_id']]);
     $_SESSION['current_device_count'] = $stmt->fetchColumn();

@@ -4,7 +4,7 @@ require_once __DIR__ . '/includes/bootstrap.php'; // Load bootstrap for DB conne
 $message = '';
 
 // If a license key is already set, redirect to index
-if (getAppLicenseKey()) {
+if (getAppLicenseKey()) { // Use getAppLicenseKey from app_settings.php
     header('Location: index.php');
     exit;
 }
@@ -17,7 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $message = '<div class="bg-red-500/20 border border-red-500/30 text-red-300 text-sm rounded-lg p-3 text-center">Please enter a license key.</div>';
     } else {
         // Attempt to validate the license key against the external API
-        $installation_id = getInstallationId(); // Ensure installation ID is available
+        $installation_id = getInstallationId(); // Use getInstallationId from app_settings.php
         if (empty($installation_id)) {
             error_log("ERROR: license_setup.php failed to get installation ID.");
             $message = '<div class="bg-red-500/20 border border-red-500/30 text-red-300 text-sm rounded-lg p-3 text-center">Application installation ID missing. Please re-run database setup.</div>';
@@ -57,7 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $message = '<div class="bg-red-500/20 border border-red-500/30 text-red-300 text-sm rounded-lg p-3 text-center">Invalid response from license verification service.</div>';
                 } elseif (isset($licenseData['success']) && $licenseData['success'] === true) {
                     // License is valid, save it to app_settings
-                    if (setAppLicenseKey($entered_license_key)) {
+                    if (setAppLicenseKey($entered_license_key)) { // Use setAppLicenseKey from app_settings.php
                         error_log("DEBUG: license_setup.php successfully saved license key: " . $entered_license_key);
                         $message = '<div class="bg-green-500/20 border border-green-500/30 text-green-300 text-sm rounded-lg p-3 text-center">License key saved successfully! Redirecting...</div>';
                         header('Refresh: 3; url=index.php'); // Redirect to index after 3 seconds

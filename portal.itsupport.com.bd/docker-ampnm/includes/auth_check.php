@@ -1,8 +1,6 @@
 <?php
 // Include the main bootstrap file which handles DB checks and starts the session.
 require_once __DIR__ . '/bootstrap.php';
-// Include config.php to make license-related functions available
-require_once __DIR__ . '/../config.php';
 
 // If the user is not logged in, redirect to the login page.
 if (!isset($_SESSION['user_id'])) {
@@ -21,9 +19,9 @@ if (!isset($_SESSION['max_devices'])) $_SESSION['max_devices'] = 0;
 if (!isset($_SESSION['license_status_code'])) $_SESSION['license_status_code'] = 'unknown';
 if (!isset($_SESSION['license_grace_period_end'])) $_SESSION['license_grace_period_end'] = null;
 
-// Retrieve the application license key dynamically
+// Retrieve the application license key dynamically using app_settings.php
 $app_license_key = getAppLicenseKey();
-$installation_id = getInstallationId(); // Retrieve the installation ID
+$installation_id = getInstallationId(); // Retrieve the installation ID using app_settings.php
 
 error_log("DEBUG: auth_check.php - Retrieved app_license_key: " . (empty($app_license_key) ? 'EMPTY' : 'PRESENT') . ", Installation ID: " . (empty($installation_id) ? 'EMPTY' : $installation_id));
 
@@ -69,4 +67,3 @@ if (isset($_SESSION['license_grace_period_end']) && $_SESSION['license_grace_per
 if ($_SESSION['license_status_code'] === 'unknown') {
     $_SESSION['license_message'] = 'License status needs to be verified. Please refresh or check the License tab.';
 }
-?>
