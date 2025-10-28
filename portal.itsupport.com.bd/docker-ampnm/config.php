@@ -85,3 +85,28 @@ function updateAppSetting($key, $value) {
         return false;
     }
 }
+
+/**
+ * Helper function to get the application's license key.
+ * @return string|null The license key, or null if not set.
+ */
+function getAppLicenseKey() {
+    return getAppSetting('app_license_key');
+}
+
+/**
+ * Helper function to set the application's license key.
+ * @param string $key The license key to set.
+ * @return bool True on success, false on failure.
+ */
+function setAppLicenseKey($key) {
+    return updateAppSetting('app_license_key', $key);
+}
+
+/**
+ * Helper function to get the application's unique installation ID.
+ * @return string|null The installation ID, or null if not set.
+ */
+function getInstallationId() {
+    return getAppSetting('installation_id');
+}
