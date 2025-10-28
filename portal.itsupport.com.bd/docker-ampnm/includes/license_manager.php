@@ -23,6 +23,7 @@ function verifyLicenseWithPortal() {
         $_SESSION['license_message'] = 'Please log in to verify your license.';
         $_SESSION['license_max_devices'] = 0;
         $_SESSION['license_expires_at'] = null;
+        error_log("LICENSE_ERROR: License verification skipped. User not logged in.");
         return;
     }
 
@@ -44,7 +45,7 @@ function verifyLicenseWithPortal() {
         $_SESSION['license_max_devices'] = 0;
         $_SESSION['license_expires_at'] = null;
         $_SESSION['license_last_verified'] = time();
-        error_log("DEBUG: License verification aborted: app_license_key or installation_id is empty in Docker app's settings.");
+        error_log("LICENSE_ERROR: License verification aborted. License key or installation ID is empty in Docker app's settings.");
         return;
     }
 
@@ -77,7 +78,7 @@ function verifyLicenseWithPortal() {
     error_log("DEBUG: cURL response from portal: HTTP Code: {$http_code}, cURL Error: {$curl_error}, Response Body: " . ($response === false ? 'FALSE' : $response));
 
     if ($response === false) {
-        error_log("License verification cURL error: " . $curl_error);
+        error_log("LICENSE_ERROR: License server unreachable. cURL error: " . $curl_error);
         $_SESSION['license_status'] = 'error';
         $_SESSION['license_message'] = 'Could not connect to license server. Please check network or try again later.';
         $_SESSION['license_max_devices'] = 0;
@@ -89,7 +90,7 @@ function verifyLicenseWithPortal() {
     $result = json_decode($response, true);
 
     if ($http_code !== 200 || !isset($result['success'])) {
-        error_log("License verification API error (HTTP $http_code): " . ($result['message'] ?? $response));
+        error_log("LICENSE_ERROR: License server returned an unexpected/invalid response (HTTP $http_code). Response: " . ($response ?? 'Empty response.'));
         $_SESSION['license_status'] = 'error';
         $_SESSION['license_message'] = 'License server returned an unexpected response. ' . ($result['message'] ?? 'Unknown error.');
         $_SESSION['license_max_devices'] = 0;
@@ -103,11 +104,37 @@ function verifyLicenseWithPortal() {
         $_SESSION['license_message'] = $result['message'] ?? 'License is active.';
         $_SESSION['license_max_devices'] = $result['max_devices'] ?? 1;
         $_SESSION['license_expires_at'] = $result['expires_at'] ?? null; // Portal should return this
+        error_log("LICENSE_INFO: License verification successful. Status: active, Max Devices: {$result['max_devices']}.");
     } else {
         $_SESSION['license_status'] = $result['actual_status'] ?? 'invalid';
         $_SESSION['license_message'] = $result['message'] ?? 'License is invalid.';
         $_SESSION['license_max_devices'] = 0;
         $_SESSION['license_expires_at'] = null;
+
+        // Log specific error based on actual_status
+        switch ($_SESSION['license_status']) {
+            case 'not_found':
+                error_log("LICENSE_ERROR: License key '{$app_license_key}' not found on portal.");
+                break;
+            case 'expired':
+                error_log("LICENSE_ERROR: License key '{$app_license_key}' has expired.");
+                break;
+            case 'revoked':
+                error_log("LICENSE_ERROR: License key '{$app_license_key}' has been revoked by admin.");
+                break;
+            case 'in_use':
+                error_log("LICENSE_ERROR: License key '{$app_license_key}' is currently in use by another server (Installation ID: {$installation_id}).");
+                break;
+            case 'invalid_request':
+                error_log("LICENSE_ERROR: Invalid request sent to license server. Missing data in payload.");
+                break;
+            case 'error':
+                error_log("LICENSE_ERROR: An internal error occurred on the license server during verification.");
+                break;
+            default:
+                error_log("LICENSE_ERROR: License key '{$app_license_key}' is invalid for an unknown reason. Status: {$_SESSION['license_status']}.");
+                break;
+        }
     }
     $_SESSION['license_last_verified'] = time();
 }
