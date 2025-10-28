@@ -13,8 +13,6 @@ RUN apt-get update && apt-get install -y \
     libxml2-dev \
     nmap \
     mariadb-client-compat \
-    curl \
-    gnupg \
     && rm -rf /var/lib/apt/lists/*
 
 # Install PHP extensions
@@ -24,31 +22,27 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
 # Enable Apache modules
 RUN a2enmod rewrite
 
-# --- PHP Application Setup ---
-# Copy PHP application files from the build context's 'portal.itsupport.com.bd/docker-ampnm/' folder
-# directly to Apache's default DocumentRoot
+# Copy application files into the image
 COPY portal.itsupport.com.bd/docker-ampnm/ /var/www/html/
 
-# Set permissions for all files
-RUN chown -R www-data:www-data /var/www/html \
-    && chmod -R 755 /var/www/html
+# Copy the entrypoint script into the image
+COPY portal.itsupport.com.bd/docker-ampnm/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+# Ensure the uploads directory exists and has correct permissions
+# This will create the directory inside the image, which will then be
+# mounted over by the 'app_uploads' volume at runtime.
+RUN mkdir -p /var/www/html/uploads \
+    && chown -R www-data:www-data /var/www/html/uploads \
+    && chmod -R 775 /var/www/html/uploads
 
 # Expose port 2266
 EXPOSE 2266
 
 # Update Apache configuration to listen on 2266
-RUN sed -i '/^Listen 80/d' /etc/apache2/ports.conf \
-    && sed -i '/^Listen 2266/d' /etc/apache2/ports.conf \
-    && echo "Listen 2266" >> /etc/apache2/ports.conf \
+RUN echo "Listen 2266" >> /etc/apache2/ports.conf \
     && sed -i -e 's/VirtualHost \*:80/VirtualHost \*:2266/g' /etc/apache2/sites-available/000-default.conf \
     && sed -i -e 's/VirtualHost \*:80/VirtualHost \*:2266/g' /etc/apache2/sites-enabled/000-default.conf
 
-# Ensure the uploads directory exists and has correct permissions (relative to new DocumentRoot)
-RUN mkdir -p /var/www/html/uploads/icons \
-    mkdir -p /var/www/html/uploads/map_backgrounds \
-    mkdir -p /var/www/html/uploads/backups \
-    && chown -R www-data:www-data /var/www/html/uploads \
-    && chmod -R 775 /var/www/html/uploads
-
-# Use the entrypoint script from the DocumentRoot
-ENTRYPOINT ["/var/www/html/docker-entrypoint.sh"]
+# Use the copied entrypoint script
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]

@@ -6,7 +6,7 @@ services:
       context: ../../ # Build context is now the root of the entire project
       dockerfile: portal.itsupport.com.bd/docker-ampnm/Dockerfile # Specify the Dockerfile path relative to the new context
     volumes:
-      - ./portal.itsupport.com.bd/docker-ampnm/:/var/www/html/ # Mount the PHP application source into the container
+      - app_uploads:/var/www/html/uploads # Mount only uploads for persistence
     depends_on:
       db:
         condition: service_healthy
@@ -42,3 +42,4 @@ services:
 
 volumes:
   db_data:
+  app_uploads: # New named volume for app uploads
