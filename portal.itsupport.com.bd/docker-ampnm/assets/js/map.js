@@ -122,7 +122,16 @@ function initMap() {
                 }
                 if (data.ip === '') data.ip = null;
                 
-                const newDevice = await api.post('create_device', { ...data, map_id: state.currentMapId });
+                // Get current map center for new device placement
+                const viewPosition = state.network.getViewPosition();
+                const canvasPosition = state.network.canvas.DOMtoCanvas(viewPosition);
+
+                const newDevice = await api.post('create_device', { 
+                    ...data, 
+                    map_id: state.currentMapId,
+                    x: canvasPosition.x, // Add default X
+                    y: canvasPosition.y  // Add default Y
+                });
                 
                 const baseNode = {
                     id: newDevice.id, label: newDevice.name, title: MapApp.utils.buildNodeTitle(newDevice),

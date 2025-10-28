@@ -65,11 +65,11 @@ include 'header.php';
 
     <!-- Modals -->
     <div id="deviceModal" class="modal-backdrop hidden">
-        <div class="modal-panel bg-slate-800 rounded-lg shadow-xl p-6 w-full max-w-md">
+        <div class="modal-panel bg-slate-800 rounded-lg shadow-xl p-6 w-full max-w-md max-h-[90vh] flex flex-col">
             <h2 id="modalTitle" class="text-xl font-semibold text-white mb-4">Add Device</h2>
-            <form id="deviceForm">
+            <form id="deviceForm" class="flex flex-col flex-grow">
                 <input type="hidden" id="deviceId" name="id">
-                <div class="space-y-4">
+                <div class="flex-grow overflow-y-auto pr-2 -mr-2 space-y-4">
                     <div>
                         <label for="deviceName" class="block text-sm font-medium text-slate-400 mb-1">Name</label>
                         <input type="text" id="deviceName" name="name" placeholder="Device Name" class="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2 focus:ring-2 focus:ring-cyan-500" required>
