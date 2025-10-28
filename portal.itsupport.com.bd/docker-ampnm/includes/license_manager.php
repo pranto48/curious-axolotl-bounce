@@ -62,7 +62,30 @@ function verifyLicenseWithPortal() {
         'installation_id' => $installation_id
     ];
 
-    $ch = curl_init(LICENSE_API_URL);
+    $license_api_url = LICENSE_API_URL; // Get the URL from config.php
+
+    // --- DNS Resolution Check ---
+    $parsed_url = parse_url($license_api_url);
+    $hostname = $parsed_url['host'] ?? null;
+    $resolved_ip = null;
+
+    if ($hostname) {
+        $resolved_ip = gethostbyname($hostname);
+        if ($resolved_ip === $hostname) { // gethostbyname returns hostname itself on failure
+            $_SESSION['license_status'] = 'error';
+            $_SESSION['license_message'] = "DNS resolution failed for license server: '{$hostname}'. Check network configuration.";
+            $_SESSION['license_max_devices'] = 0;
+            $_SESSION['license_expires_at'] = null;
+            $_SESSION['license_last_verified'] = time();
+            error_log("LICENSE_ERROR: DNS resolution failed for {$hostname}.");
+            return;
+        }
+        error_log("DEBUG: DNS resolved {$hostname} to {$resolved_ip}.");
+    } else {
+        error_log("DEBUG: Could not parse hostname from LICENSE_API_URL: {$license_api_url}");
+    }
+
+    $ch = curl_init($license_api_url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($post_data));
@@ -81,13 +104,13 @@ function verifyLicenseWithPortal() {
     $curl_error = curl_error($ch);
     curl_close($ch);
 
-    error_log("DEBUG: cURL request sent to " . LICENSE_API_URL . " with payload: " . json_encode($post_data));
+    error_log("DEBUG: cURL request sent to " . $license_api_url . " with payload: " . json_encode($post_data));
     error_log("DEBUG: cURL response from portal: HTTP Code: {$http_code}, cURL Error No: {$curl_errno}, cURL Error: {$curl_error}, Response Body: " . ($response === false ? 'FALSE' : $response));
 
     if ($response === false) {
         error_log("LICENSE_ERROR: License server unreachable. cURL error: {$curl_error} (Error No: {$curl_errno})");
         $_SESSION['license_status'] = 'error';
-        $_SESSION['license_message'] = 'Could not connect to license server. Please check network or try again later.';
+        $_SESSION['license_message'] = "Could not connect to license server. cURL Error ({$curl_errno}): {$curl_error}. Check network or try again later.";
         $_SESSION['license_max_devices'] = 0;
         $_SESSION['license_expires_at'] = null;
         $_SESSION['license_last_verified'] = time();
