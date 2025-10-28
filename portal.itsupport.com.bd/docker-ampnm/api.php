@@ -15,7 +15,7 @@ $dashboardActions = ['get_dashboard_data'];
 $userActions = ['get_users', 'create_user', 'delete_user'];
 $logActions = ['get_status_logs'];
 $notificationActions = ['get_smtp_settings', 'save_smtp_settings', 'get_device_subscriptions', 'save_device_subscription', 'delete_device_subscription', 'get_all_devices_for_subscriptions'];
-$configActions = ['get_app_config']; // NEW: Action for app configuration
+
 
 if (in_array($action, $pingActions)) {
     require __DIR__ . '/api/handlers/ping_handler.php';
@@ -31,8 +31,6 @@ if (in_array($action, $pingActions)) {
     require __DIR__ . '/api/handlers/log_handler.php';
 } elseif (in_array($action, $notificationActions)) {
     require __DIR__ . '/api/handlers/notification_handler.php';
-} elseif (in_array($action, $configActions)) { // NEW: Include config handler
-    require __DIR__ . '/api/handlers/config_handler.php';
 } elseif ($action === 'health') {
     echo json_encode(['status' => 'ok', 'timestamp' => date('c')]);
 } else {

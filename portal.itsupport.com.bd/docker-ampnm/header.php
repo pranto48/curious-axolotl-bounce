@@ -45,3 +45,71 @@ if (session_status() === PHP_SESSION_NONE) {
         </div>
     </nav>
     <div class="page-content">
+    <?php if (isset($_SESSION['license_status'])): ?>
+        <?php
+            $license_status = $_SESSION['license_status'];
+            $license_message = $_SESSION['license_message'];
+            $max_devices = $_SESSION['license_max_devices'];
+            $current_devices = $_SESSION['current_device_count'];
+            $expires_at = $_SESSION['license_expires_at'];
+
+            $status_class = '';
+            $status_icon = '';
+            $display_message = '';
+
+            switch ($license_status) {
+                case 'active':
+                    $status_class = 'bg-green-500/20 text-green-400 border-green-500/30';
+                    $status_icon = '<i class="fas fa-check-circle mr-1"></i>';
+                    $display_message = "License Active ({$current_devices}/{$max_devices} devices)";
+                    if ($expires_at) {
+                        $display_message .= " - Expires: " . date('Y-m-d', strtotime($expires_at));
+                    }
+                    break;
+                case 'free': // Assuming 'free' is also a valid active status
+                    $status_class = 'bg-green-500/20 text-green-400 border-green-500/30';
+                    $status_icon = '<i class="fas fa-check-circle mr-1"></i>';
+                    $display_message = "Free License Active ({$current_devices}/{$max_devices} devices)";
+                    if ($expires_at) {
+                        $display_message .= " - Expires: " . date('Y-m-d', strtotime($expires_at));
+                    }
+                    break;
+                case 'expired':
+                    $status_class = 'bg-red-500/20 text-red-400 border-red-500/30';
+                    $status_icon = '<i class="fas fa-exclamation-triangle mr-1"></i>';
+                    $display_message = "License Expired! ({$license_message})";
+                    break;
+                case 'revoked':
+                    $status_class = 'bg-red-500/20 text-red-400 border-red-500/30';
+                    $status_icon = '<i class="fas fa-ban mr-1"></i>';
+                    $display_message = "License Revoked! ({$license_message})";
+                    break;
+                case 'in_use':
+                    $status_class = 'bg-red-500/20 text-red-400 border-red-500/30';
+                    $status_icon = '<i class="fas fa-server mr-1"></i>';
+                    $display_message = "License in use by another server! ({$license_message})";
+                    break;
+                case 'unconfigured':
+                    $status_class = 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
+                    $status_icon = '<i class="fas fa-exclamation-circle mr-1"></i>';
+                    $display_message = "License Unconfigured! Please set up your license key.";
+                    break;
+                case 'invalid':
+                case 'not_found':
+                case 'error':
+                default:
+                    $status_class = 'bg-red-500/20 text-red-400 border-red-500/30';
+                    $status_icon = '<i class="fas fa-times-circle mr-1"></i>';
+                    $display_message = "License Invalid! ({$license_message})";
+                    break;
+            }
+        ?>
+        <div class="container mx-auto px-4 mt-4">
+            <div class="p-3 rounded-lg text-sm flex items-center justify-between <?= $status_class ?>">
+                <div><?= $status_icon ?> <?= htmlspecialchars($display_message) ?></div>
+                <?php if ($license_status !== 'active' && $license_status !== 'free'): ?>
+                    <a href="license_setup_page.php" class="text-cyan-400 hover:underline ml-4">Manage License</a>
+                <?php endif; ?>
+            </div>
+        </div>
+    <?php endif; ?>

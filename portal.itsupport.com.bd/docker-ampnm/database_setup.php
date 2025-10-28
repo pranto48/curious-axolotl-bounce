@@ -9,11 +9,20 @@ function message($text, $is_error = false) {
     $color = $is_error ? '#ef4444' : '#22c55e';
     echo "<p style='color: $color; margin: 4px 0; font-family: monospace;'>$text</p>";
 }
+
+// Function to generate a UUID (Universally Unique Identifier)
+function generateUuid() {
+    $data = random_bytes(16);
+    $data[6] = chr(ord($data[6]) & 0x0f | 0x40); // set version to 0100
+    $data[8] = chr(ord(ord($data[8]) & 0x3f | 0x80)); // set bits 6-7 to 10
+    return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Database Setup</title>
     <style>
         body { background-color: #0f172a; color: #cbd5e1; font-family: sans-serif; padding: 2rem; }
@@ -188,6 +197,15 @@ try {
             UNIQUE KEY `device_recipient_unique` (`device_id`, `recipient_email`),
             FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
             FOREIGN KEY (`device_id`) REFERENCES `devices`(`id`) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
+        
+        // NEW TABLE FOR APPLICATION SETTINGS (LICENSE KEY, INSTALLATION ID)
+        "CREATE TABLE IF NOT EXISTS `app_settings` (
+            `id` INT(6) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            `setting_key` VARCHAR(100) NOT NULL UNIQUE,
+            `setting_value` TEXT NULL,
+            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;"
     ];
 
@@ -287,6 +305,23 @@ try {
             }
         }
     }
+
+    // Initialize app_settings for license management
+    $settings_to_init = [
+        'installation_id' => generateUuid(),
+        'app_license_key' => '' // Initially empty, user will fill this
+    ];
+
+    foreach ($settings_to_init as $key => $value) {
+        $stmt = $pdo->prepare("SELECT setting_value FROM `app_settings` WHERE setting_key = ?");
+        $stmt->execute([$key]);
+        if (!$stmt->fetch()) {
+            $stmt = $pdo->prepare("INSERT INTO `app_settings` (setting_key, setting_value) VALUES (?, ?)");
+            $stmt->execute([$key, $value]);
+            message("Initialized app setting: '$key'.");
+        }
+    }
+
 
     echo "<h2 style='color: #06b6d4; font-family: sans-serif;'>Database setup completed successfully!</h2>";
     echo "<p style='color: #94a3b8;'><span class='loader'></span>Redirecting to the application in 3 seconds...</p>";

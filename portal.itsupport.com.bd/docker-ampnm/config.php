@@ -6,6 +6,10 @@ define('DB_USERNAME', getenv('DB_USER') ?: 'root');
 define('DB_PASSWORD', getenv('DB_PASSWORD') ?: '');
 define('DB_NAME', getenv('DB_NAME') ?: 'network_monitor');
 
+// License System Configuration
+define('LICENSE_API_URL', getenv('LICENSE_API_URL') ?: 'http://localhost:8080/verify_license.php'); // Default to local portal if not set
+define('APP_LICENSE_KEY_ENV', getenv('APP_LICENSE_KEY') ?: ''); // This is the key from docker-compose.yml, might be empty
+
 // Create database connection
 function getDbConnection() {
     static $pdo = null;
@@ -44,4 +48,40 @@ function getDbConnection() {
     }
     
     return $pdo;
+}
+
+/**
+ * Retrieves a setting from the app_settings table.
+ * @param string $key The key of the setting to retrieve.
+ * @return string|null The setting value, or null if not found.
+ */
+function getAppSetting($key) {
+    try {
+        $pdo = getDbConnection();
+        $stmt = $pdo->prepare("SELECT setting_value FROM `app_settings` WHERE setting_key = ?");
+        $stmt->execute([$key]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $result ? $result['setting_value'] : null;
+    } catch (PDOException $e) {
+        error_log("Error getting app setting '$key': " . $e->getMessage());
+        return null;
+    }
+}
+
+/**
+ * Updates or inserts a setting into the app_settings table.
+ * @param string $key The key of the setting.
+ * @param string $value The new value for the setting.
+ * @return bool True on success, false on failure.
+ */
+function updateAppSetting($key, $value) {
+    try {
+        $pdo = getDbConnection();
+        $stmt = $pdo->prepare("INSERT INTO `app_settings` (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?, updated_at = CURRENT_TIMESTAMP");
+        $stmt->execute([$key, $value, $value]);
+        return true;
+    } catch (PDOException $e) {
+        error_log("Error updating app setting '$key': " . $e->getMessage());
+        return false;
+    }
 }

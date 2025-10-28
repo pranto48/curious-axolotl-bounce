@@ -99,6 +99,17 @@ switch ($action) {
                 exit;
             }
 
+            // License check for max devices
+            $max_devices = $_SESSION['license_max_devices'] ?? 0;
+            $current_devices = $_SESSION['current_device_count'] ?? 0;
+            $devices_to_add_count = count($devices);
+
+            if ($max_devices > 0 && ($current_devices + $devices_to_add_count) > $max_devices) {
+                http_response_code(403);
+                echo json_encode(['error' => "License limit reached. You can only add " . ($max_devices - $current_devices) . " more devices. Total allowed: {$max_devices}."]);
+                exit;
+            }
+
             $pdo->beginTransaction();
             try {
                 $sql = "INSERT INTO devices (
@@ -390,6 +401,16 @@ switch ($action) {
 
     case 'create_device':
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            // License check for max devices
+            $max_devices = $_SESSION['license_max_devices'] ?? 0;
+            $current_devices = $_SESSION['current_device_count'] ?? 0;
+
+            if ($max_devices > 0 && $current_devices >= $max_devices) {
+                http_response_code(403);
+                echo json_encode(['error' => "License limit reached. You cannot add more than {$max_devices} devices."]);
+                exit;
+            }
+
             $sql = "INSERT INTO devices (user_id, name, ip, check_port, type, description, map_id, x, y, ping_interval, icon_size, name_text_size, icon_url, warning_latency_threshold, warning_packetloss_threshold, critical_latency_threshold, critical_packetloss_threshold, show_live_ping) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
             $stmt = $pdo->prepare($sql);
             $stmt->execute([
