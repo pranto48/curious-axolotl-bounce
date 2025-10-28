@@ -275,8 +275,9 @@ function getDockerfileContent() {
 function getDockerComposeContent($license_key) {
     // Define the LICENSE_API_URL for the AMPNM app
     // This should point to the verify_license.php endpoint on your portal
-    $license_api_url = 'http://localhost:80/verify_license.php'; // Changed to local address
-    // If your local portal runs on a different port (e.g., 8080), change it to 'http://localhost:8080/verify_license.php'
+    // Using 127.0.0.1 to explicitly target the host machine when network_mode: host is used.
+    $license_api_url = 'http://127.0.0.1:80/verify_license.php'; 
+    // If your local portal runs on a different port (e.g., 8080), change it to 'http://127.0.0.1:8080/verify_license.php'
 
     $docker_compose_content = <<<EOT
 version: '3.8'
@@ -304,6 +305,7 @@ services:
     ports:
       - "2266:2266" # Main app will now run on port 2266
     restart: unless-stopped
+    network_mode: "host" # This is crucial for host network access
 
   db:
     image: mysql:8.0
