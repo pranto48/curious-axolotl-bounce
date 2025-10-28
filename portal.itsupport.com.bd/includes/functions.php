@@ -275,7 +275,8 @@ function getDockerfileContent() {
 function getDockerComposeContent($license_key) {
     // Define the LICENSE_API_URL for the AMPNM app
     // This should point to the verify_license.php endpoint on your portal
-    $license_api_url = 'https://portal.itsupport.com.bd/verify_license.php'; // Ensure this matches your deployment
+    $license_api_url = 'http://localhost:80/verify_license.php'; // Changed to local address
+    // If your local portal runs on a different port (e.g., 8080), change it to 'http://localhost:8080/verify_license.php'
 
     $docker_compose_content = <<<EOT
 version: '3.8'
