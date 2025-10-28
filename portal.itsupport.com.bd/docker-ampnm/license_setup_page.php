@@ -11,15 +11,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         // Save the license key
         if (updateAppSetting('app_license_key', $license_key)) {
-            // Trigger immediate verification
-            require_once 'includes/license_manager.php'; // This will re-run verification logic
-            
-            if ($_SESSION['license_status'] === 'active') {
-                header('Location: index.php?license_success=true');
-                exit;
-            } else {
-                $message = '<div class="bg-red-500/20 border border-red-500/30 text-red-300 text-sm rounded-lg p-3 text-center mb-4">License verification failed: ' . htmlspecialchars($_SESSION['license_message']) . '</div>';
-            }
+            // Redirect to login page. License verification will happen after successful login.
+            header('Location: login.php?license_saved=true');
+            exit;
         } else {
             $message = '<div class="bg-red-500/20 border border-red-500/30 text-red-300 text-sm rounded-lg p-3 text-center mb-4">Failed to save license key. Please try again.</div>';
         }
@@ -29,7 +23,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // Ensure installation_id is generated if not already
 $installation_id = getAppSetting('installation_id');
 if (empty($installation_id)) {
-    $new_uuid = generateUuid(); // Function from license_manager.php
+    // This function is defined in license_manager.php, which is included by auth_check.php
+    // For license_setup_page.php, we need to ensure it's available.
+    // If license_manager.php is not yet included, define a local generateUuid.
+    if (!function_exists('generateUuid')) {
+        function generateUuid() {
+            $data = random_bytes(16);
+            $data[6] = chr(ord($data[6]) & 0x0f | 0x40); // set version to 0100
+            $data[8] = chr(ord(ord($data[8]) & 0x3f | 0x80)); // set bits 6-7 to 10
+            return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
+        }
+    }
+    $new_uuid = generateUuid();
     updateAppSetting('installation_id', $new_uuid);
     $installation_id = $new_uuid;
 }

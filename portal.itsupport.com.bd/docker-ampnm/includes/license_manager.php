@@ -17,6 +17,15 @@ function generateUuid() {
  * Caches results in session.
  */
 function verifyLicenseWithPortal() {
+    // Only attempt verification if a user is logged in to the AMPNM app
+    if (!isset($_SESSION['user_id'])) {
+        $_SESSION['license_status'] = 'unverified_login_required';
+        $_SESSION['license_message'] = 'Please log in to verify your license.';
+        $_SESSION['license_max_devices'] = 0;
+        $_SESSION['license_expires_at'] = null;
+        return;
+    }
+
     // Check if we need to re-verify (based on interval)
     if (isset($_SESSION['license_last_verified']) && (time() - $_SESSION['license_last_verified'] < LICENSE_VERIFICATION_INTERVAL)) {
         return; // Use cached data
@@ -24,10 +33,10 @@ function verifyLicenseWithPortal() {
 
     $app_license_key = getAppSetting('app_license_key');
     $installation_id = getAppSetting('installation_id');
-    $user_id = $_SESSION['user_id'] ?? null; // Assuming user_id is available in session
+    $user_id = $_SESSION['user_id']; // Now guaranteed to be set
 
     // If no license key or installation ID, mark as invalid and return
-    if (empty($app_license_key) || empty($installation_id) || empty($user_id)) {
+    if (empty($app_license_key) || empty($installation_id)) {
         $_SESSION['license_status'] = 'unconfigured';
         $_SESSION['license_message'] = 'License key or installation ID is missing/unconfigured.';
         $_SESSION['license_max_devices'] = 0;
@@ -119,7 +128,7 @@ if (empty($app_license_key)) {
         exit;
     }
 } else {
-    // If license key is set, verify it
+    // If license key is set, verify it (only if user is logged in)
     verifyLicenseWithPortal();
 }
 
