@@ -68,17 +68,24 @@ function verifyLicenseWithPortal() {
     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($post_data));
     curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
     curl_setopt($ch, CURLOPT_TIMEOUT, 10); // 10 second timeout
+    
+    // --- TEMPORARY DEBUGGING: Disable SSL verification and enable verbose output ---
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+    curl_setopt($ch, CURLOPT_VERBOSE, true); // This will output verbose cURL info to stderr/error_log
+    // --- END TEMPORARY DEBUGGING ---
 
     $response = curl_exec($ch);
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curl_errno = curl_errno($ch);
     $curl_error = curl_error($ch);
     curl_close($ch);
 
     error_log("DEBUG: cURL request sent to " . LICENSE_API_URL . " with payload: " . json_encode($post_data));
-    error_log("DEBUG: cURL response from portal: HTTP Code: {$http_code}, cURL Error: {$curl_error}, Response Body: " . ($response === false ? 'FALSE' : $response));
+    error_log("DEBUG: cURL response from portal: HTTP Code: {$http_code}, cURL Error No: {$curl_errno}, cURL Error: {$curl_error}, Response Body: " . ($response === false ? 'FALSE' : $response));
 
     if ($response === false) {
-        error_log("LICENSE_ERROR: License server unreachable. cURL error: " . $curl_error);
+        error_log("LICENSE_ERROR: License server unreachable. cURL error: {$curl_error} (Error No: {$curl_errno})");
         $_SESSION['license_status'] = 'error';
         $_SESSION['license_message'] = 'Could not connect to license server. Please check network or try again later.';
         $_SESSION['license_max_devices'] = 0;
