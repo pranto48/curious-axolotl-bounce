@@ -35,6 +35,8 @@ function verifyLicenseWithPortal() {
     $installation_id = getAppSetting('installation_id');
     $user_id = $_SESSION['user_id']; // Now guaranteed to be set
 
+    error_log("DEBUG: License verification attempt. User ID: {$user_id}, Installation ID: {$installation_id}, License Key: " . (empty($app_license_key) ? 'EMPTY' : 'PRESENT'));
+
     // If no license key or installation ID, mark as invalid and return
     if (empty($app_license_key) || empty($installation_id)) {
         $_SESSION['license_status'] = 'unconfigured';
@@ -42,6 +44,7 @@ function verifyLicenseWithPortal() {
         $_SESSION['license_max_devices'] = 0;
         $_SESSION['license_expires_at'] = null;
         $_SESSION['license_last_verified'] = time();
+        error_log("DEBUG: License verification aborted: app_license_key or installation_id is empty in Docker app's settings.");
         return;
     }
 
@@ -69,6 +72,9 @@ function verifyLicenseWithPortal() {
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $curl_error = curl_error($ch);
     curl_close($ch);
+
+    error_log("DEBUG: cURL request sent to " . LICENSE_API_URL . " with payload: " . json_encode($post_data));
+    error_log("DEBUG: cURL response from portal: HTTP Code: {$http_code}, cURL Error: {$curl_error}, Response Body: " . ($response === false ? 'FALSE' : $response));
 
     if ($response === false) {
         error_log("License verification cURL error: " . $curl_error);
