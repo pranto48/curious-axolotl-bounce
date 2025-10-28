@@ -230,12 +230,13 @@ function getDockerfileContent() {
         "    libonig-dev \\",
         "    libxml2-dev \\",
         "    nmap \\", 
-        "    mariadb-client-compat \\", # Changed from mysql-client to mariadb-client-compat
+        "    curl \\", # Added curl command-line tool
+        "    mariadb-client-compat \\",
         "    && rm -rf /var/lib/apt/lists/*",
         "",
         "# Install PHP extensions",
         "RUN docker-php-ext-configure gd --with-freetype --with-jpeg \\",
-        "    && docker-php-ext-install -j\$(nproc) gd pdo_mysql zip intl opcache bcmath exif",
+        "    && docker-php-ext-install -j\$(nproc) gd pdo_mysql zip intl opcache bcmath exif curl", # Added curl PHP extension
         "",
         "# Enable Apache modules",
         "RUN a2enmod rewrite",
@@ -262,7 +263,7 @@ function getDockerfileContent() {
         "# Ensure the uploads directory exists and has correct permissions",
         "RUN mkdir -p /var/www/html/uploads/icons \\",
         "    mkdir -p /var/www/html/uploads/map_backgrounds \\",
-        "    mkdir -p /var/www/html/uploads/backups \\", # Added backups directory
+        "    mkdir -p /var/www/html/uploads/backups \\",
         "    && chown -R www-data:www-data /var/www/html/uploads \\",
         "    && chmod -R 775 /var/www/html/uploads",
         "",
@@ -273,9 +274,6 @@ function getDockerfileContent() {
 }
 
 function getDockerComposeContent($license_key) {
-    // Define the LICENSE_API_URL for the AMPNM app
-    // This should point to the verify_license.php endpoint on your portal
-    // Using the public domain as specified by the user.
     $license_api_url = 'https://portal.itsupport.com.bd/verify_license.php'; 
 
     $docker_compose_content = <<<EOT
@@ -284,16 +282,15 @@ version: '3.8'
 services:
   app:
     build:
-      context: . # Build context is the docker-ampnm folder
+      context: .
       dockerfile: Dockerfile
-    # The entrypoint is now handled by the Dockerfile itself
     volumes:
-      - ./ampnm-app-source/:/var/www/html/ # Mount the application source into the container
+      - ./ampnm-app-source/:/var/www/html/
     depends_on:
       db:
         condition: service_healthy
     environment:
-      - DB_HOST=db # Changed from 127.0.0.1 to 'db' (the service name)
+      - DB_HOST=db
       - DB_NAME=network_monitor
       - DB_USER=user
       - DB_PASSWORD=password
@@ -302,9 +299,9 @@ services:
       - LICENSE_API_URL={$license_api_url}
       - APP_LICENSE_KEY={$license_key}
     ports:
-      - "2266:2266" # Main app will now run on port 2266
+      - "2266:2266"
     restart: unless-stopped
-    network_mode: "host" # This is crucial for host network access
+    network_mode: "host"
 
   db:
     image: mysql:8.0
@@ -320,7 +317,7 @@ services:
       - "3306:3306"
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p\$$MYSQL_ROOT_PASSWORD"] # Corrected to single $
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p\$$MYSQL_ROOT_PASSWORD"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -408,7 +405,7 @@ function portal_header($title = "IT Support BD Portal") {
         'products.php' => 'Products',
         'dashboard.php' => 'Dashboard',
         'support.php' => '<i class="fas fa-headset mr-1"></i> Support',
-        'profile.php' => '<i class="fas fa-user-circle mr-1"></i> Profile', // Added Profile link
+        'profile.php' => '<i class="fas fa-user-circle mr-1"></i> Profile',
         'cart.php' => '<i class="fas fa-shopping-cart mr-1"></i> Cart',
     ];
 
@@ -432,7 +429,7 @@ function portal_header($title = "IT Support BD Portal") {
     echo '</div>
             </div>
         </nav>
-        <main class="container mx-auto py-8 flex-grow page-content">'; // Added page-content class
+        <main class="container mx-auto py-8 flex-grow page-content">';
 }
 
 function portal_footer() {
@@ -469,7 +466,7 @@ function admin_header($title = "Admin Panel") {
         'users.php' => 'Customers',
         'license-manager.php' => 'Licenses',
         'products.php' => 'Products',
-        'tickets.php' => '<i class="fas fa-headset mr-1"></i> Tickets', // New Admin Tickets link
+        'tickets.php' => '<i class="fas fa-headset mr-1"></i> Tickets',
     ];
 
     if (isAdminLoggedIn()) {
@@ -483,14 +480,14 @@ function admin_header($title = "Admin Panel") {
             'adminpanel.php' => 'Login',
         ];
         foreach ($admin_public_nav_links as $href => $text) {
-            $active_class = (basename($current_page) === basename($href)) ? 'active' : ''; // Use basename for adminpanel.php
+            $active_class = (basename($current_page) === basename($href)) ? 'active' : '';
             echo '<a href="' . htmlspecialchars($href) . '" class="admin-nav-link ' . $active_class . '">' . $text . '</a>';
         }
     }
     echo '</div>
             </div>
         </nav>
-        <main class="container mx-auto py-8 flex-grow page-content">'; // Added page-content class
+        <main class="container mx-auto py-8 flex-grow page-content">';
 }
 
 function admin_footer() {
