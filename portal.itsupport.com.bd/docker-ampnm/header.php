@@ -49,9 +49,9 @@ if (session_status() === PHP_SESSION_NONE) {
         <?php
             $license_status = $_SESSION['license_status'];
             $license_message = $_SESSION['license_message'];
-            $max_devices = $_SESSION['license_max_devices'];
-            $current_devices = $_SESSION['current_device_count'];
-            $expires_at = $_SESSION['license_expires_at'];
+            $max_devices = $_SESSION['license_max_devices'] ?? 0;
+            $current_devices = $_SESSION['current_device_count'] ?? 0;
+            $expires_at = $_SESSION['license_expires_at'] ?? null;
 
             $status_class = '';
             $status_icon = '';
@@ -59,17 +59,10 @@ if (session_status() === PHP_SESSION_NONE) {
 
             switch ($license_status) {
                 case 'active':
+                case 'free':
                     $status_class = 'bg-green-500/20 text-green-400 border-green-500/30';
                     $status_icon = '<i class="fas fa-check-circle mr-1"></i>';
-                    $display_message = "License Active ({$current_devices}/{$max_devices} devices)";
-                    if ($expires_at) {
-                        $display_message .= " - Expires: " . date('Y-m-d', strtotime($expires_at));
-                    }
-                    break;
-                case 'free': // Assuming 'free' is also a valid active status
-                    $status_class = 'bg-green-500/20 text-green-400 border-green-500/30';
-                    $status_icon = '<i class="fas fa-check-circle mr-1"></i>';
-                    $display_message = "Free License Active ({$current_devices}/{$max_devices} devices)";
+                    $display_message = ucfirst($license_status) . " License Active ({$current_devices}/{$max_devices} devices)";
                     if ($expires_at) {
                         $display_message .= " - Expires: " . date('Y-m-d', strtotime($expires_at));
                     }
@@ -108,7 +101,7 @@ if (session_status() === PHP_SESSION_NONE) {
             <div class="p-3 rounded-lg text-sm flex items-center justify-between <?= $status_class ?>">
                 <div><?= $status_icon ?> <?= htmlspecialchars($display_message) ?></div>
                 <?php if ($license_status !== 'active' && $license_status !== 'free'): ?>
-                    <a href="license_setup_page.php" class="text-cyan-400 hover:underline ml-4">Manage License</a>
+                    <a href="license_setup.php" class="text-cyan-400 hover:underline ml-4">Manage License</a>
                 <?php endif; ?>
             </div>
         </div>

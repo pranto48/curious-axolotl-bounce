@@ -3,6 +3,7 @@
 require_once __DIR__ . '/bootstrap.php';
 // Include config.php to make license-related functions available
 require_once __DIR__ . '/../config.php';
+require_once __DIR__ . '/license_manager.php'; // Ensure license manager is included for verification logic
 
 // If the user is not logged in, redirect to the login page.
 if (!isset($_SESSION['user_id'])) {
@@ -20,9 +21,10 @@ $_SESSION['is_admin'] = ($_SESSION['username'] === 'admin');
 // Initialize session variables if they don't exist
 if (!isset($_SESSION['can_add_device'])) $_SESSION['can_add_device'] = false;
 if (!isset($_SESSION['license_message'])) $_SESSION['license_message'] = 'License status unknown.';
-if (!isset($_SESSION['max_devices'])) $_SESSION['max_devices'] = 0;
-if (!isset($_SESSION['license_status_code'])) $_SESSION['license_status_code'] = 'unknown';
-if (!isset($_SESSION['license_grace_period_end'])) $_SESSION['license_grace_period_end'] = null;
+if (!isset($_SESSION['license_status'])) $_SESSION['license_status'] = 'unknown'; // Use license_status for primary status
+if (!isset($_SESSION['license_max_devices'])) $_SESSION['license_max_devices'] = 0;
+if (!isset($_SESSION['current_device_count'])) $_SESSION['current_device_count'] = 0;
+if (!isset($_SESSION['license_expires_at'])) $_SESSION['license_expires_at'] = null;
 
 // Retrieve the application license key dynamically
 $app_license_key = getAppLicenseKey();
@@ -32,44 +34,53 @@ error_log("DEBUG: auth_check.php - Retrieved app_license_key: " . (empty($app_li
 
 if (!$app_license_key) {
     $_SESSION['license_message'] = 'Application license key not configured.';
-    $_SESSION['license_status_code'] = 'disabled';
-    // Redirect to license setup if key is missing, even if logged in (shouldn't happen if bootstrap works)
-    header('Location: license_setup.php');
-    exit;
+    $_SESSION['license_status'] = 'unconfigured';
+    // Redirect to license setup if key is missing
+    if (basename($_SERVER['PHP_SELF']) !== 'license_setup.php') {
+        header('Location: license_setup.php');
+        exit;
+    }
 }
 
 if (!$installation_id) {
     $_SESSION['license_message'] = 'Application installation ID not found. Please re-run database setup.';
-    $_SESSION['license_status_code'] = 'disabled';
+    $_SESSION['license_status'] = 'disabled';
     header('Location: database_setup.php'); // Redirect to setup to ensure ID is generated
     exit;
 }
 
-// Check if grace period is active and has expired
-if (isset($_SESSION['license_grace_period_end']) && $_SESSION['license_grace_period_end'] !== null) {
-    if (time() > $_SESSION['license_grace_period_end']) {
-        // Grace period over, disable app
-        $_SESSION['license_status_code'] = 'disabled';
-        $_SESSION['license_message'] = 'Your license has expired and the grace period has ended. Please purchase a new license.';
+// --- License Verification Logic ---
+// Trigger verification if the key is present and the session cache is old/missing.
+if ($app_license_key && (!isset($_SESSION['license_last_verified']) || (time() - $_SESSION['license_last_verified'] > LICENSE_VERIFICATION_INTERVAL))) {
+    verifyLicenseWithPortal();
+}
+
+// --- Enforce License Status ---
+$non_active_statuses = ['expired', 'revoked', 'in_use', 'invalid', 'not_found', 'error', 'disabled'];
+$current_license_status = $_SESSION['license_status'] ?? 'unknown';
+
+if (in_array($current_license_status, $non_active_statuses)) {
+    // If the license is explicitly non-active, redirect to the expired page.
+    $current_page = basename($_SERVER['PHP_SELF']);
+    if ($current_page !== 'license_setup.php' && $current_page !== 'license_expired.php' && $current_page !== 'login.php') {
         header('Location: license_expired.php');
         exit;
-    } else {
-        // Still in grace period
-        if ($_SESSION['license_status_code'] !== 'grace_period') { // Only update if not already set
-            $_SESSION['license_status_code'] = 'grace_period';
-            $_SESSION['license_message'] = 'Your license has expired. You are in a grace period until ' . date('Y-m-d H:i', $_SESSION['license_grace_period_end']) . '. Please renew your license.';
-        }
     }
 }
 
-// IMPORTANT: The blocking call to revalidateLicenseSession is removed from here.
-// License status will now be updated by explicit frontend calls to force_license_recheck
-// or update_app_license_key, or by a background process if implemented.
-// This ensures the initial page load is not blocked by external API calls.
-
-// If the license status is still 'unknown' after initial checks, it means no revalidation has occurred yet.
-// The frontend will handle triggering the first revalidation.
-if ($_SESSION['license_status_code'] === 'unknown') {
-    $_SESSION['license_message'] = 'License status needs to be verified. Please refresh or check the License tab.';
+// Store current device count in session for easy access (updated during verification, but we ensure it's available)
+if (isset($_SESSION['user_id'])) {
+    $pdo = getDbConnection();
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM `devices` WHERE user_id = ?");
+    $stmt->execute([$_SESSION['user_id']]);
+    $_SESSION['current_device_count'] = $stmt->fetchColumn();
+} else {
+    $_SESSION['current_device_count'] = 0;
 }
+
+// Set can_add_device flag
+$max_devices = $_SESSION['license_max_devices'] ?? 0;
+$current_devices = $_SESSION['current_device_count'] ?? 0;
+$_SESSION['can_add_device'] = ($current_license_status === 'active' || $current_license_status === 'free') && ($max_devices === 0 || $current_devices < $max_devices);
+
 ?>

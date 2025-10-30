@@ -66,11 +66,13 @@ include 'header.php';
 
     <!-- Add/Edit Device Modal -->
     <div id="deviceModal" class="modal-backdrop hidden">
-        <div class="modal-panel bg-slate-800 rounded-lg shadow-xl p-6 w-full max-w-md max-h-[90vh] flex flex-col">
-            <h2 id="modalTitle" class="text-xl font-semibold text-white mb-4">Add Device</h2>
-            <form id="deviceForm" class="flex flex-col flex-grow">
+        <!-- Changed max-h-[90vh] to h-[90vh] and added overflow-hidden to the panel -->
+        <div class="modal-panel bg-slate-800 rounded-lg shadow-xl p-6 w-full max-w-md h-[90vh] flex flex-col overflow-hidden">
+            <h2 id="modalTitle" class="text-xl font-semibold text-white mb-4 flex-shrink-0">Add Device</h2>
+            <form id="deviceForm" class="flex flex-col flex-grow min-h-0">
                 <input type="hidden" id="deviceId" name="id">
-                <div class="flex-grow overflow-y-auto pr-2 -mr-2 space-y-4">
+                <!-- Added p-1 to the inner scrollable div to ensure scrollbar doesn't overlap content -->
+                <div class="flex-grow overflow-y-auto space-y-4 p-1 -m-1">
                     <div>
                         <label for="deviceName" class="block text-sm font-medium text-slate-400 mb-1">Name</label>
                         <input type="text" id="deviceName" name="name" placeholder="Device Name" class="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2 focus:ring-2 focus:ring-cyan-500" required>
@@ -167,7 +169,7 @@ include 'header.php';
                         </label>
                     </div>
                 </div>
-                <div class="flex justify-end gap-4 mt-6">
+                <div class="flex justify-end gap-4 mt-6 flex-shrink-0">
                     <button type="button" id="cancelBtn" class="px-4 py-2 bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600">Cancel</button>
                     <button type="submit" id="saveBtn" class="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700">Save</button>
                 </div>
