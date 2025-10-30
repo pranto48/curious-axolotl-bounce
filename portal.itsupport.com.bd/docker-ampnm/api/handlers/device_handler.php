@@ -2,6 +2,15 @@
 // This file is included by api.php and assumes $pdo, $action, and $input are available.
 $current_user_id = $_SESSION['user_id'];
 
+// Enforce admin-only access for modification actions
+$modificationActions = ['import_devices', 'create_device', 'update_device', 'delete_device', 'upload_device_icon'];
+
+if (in_array($action, $modificationActions) && ($_SESSION['username'] !== 'admin')) {
+    http_response_code(403);
+    echo json_encode(['error' => 'Forbidden: Only admin users can modify devices.']);
+    exit;
+}
+
 // Placeholder for email notification function
 function sendEmailNotification($pdo, $device, $oldStatus, $newStatus, $details) {
     // In a real application, this would fetch SMTP settings and subscriptions,

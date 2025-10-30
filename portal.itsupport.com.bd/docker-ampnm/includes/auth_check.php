@@ -10,6 +10,9 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
+// Determine if the user is an admin
+$_SESSION['is_admin'] = ($_SESSION['username'] === 'admin');
+
 // --- External License Validation ---
 // This application's license key is now retrieved dynamically from the database.
 // The external verification service URL is defined in config.php (LICENSE_API_URL)

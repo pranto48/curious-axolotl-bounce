@@ -2,6 +2,15 @@
 // This file is included by api.php and assumes $pdo, $action, and $input are available.
 $current_user_id = $_SESSION['user_id'];
 
+// Enforce admin-only access for modification actions
+$modificationActions = ['create_map', 'update_map', 'delete_map', 'create_edge', 'update_edge', 'delete_edge', 'import_map', 'upload_map_background'];
+
+if (in_array($action, $modificationActions) && ($_SESSION['username'] !== 'admin')) {
+    http_response_code(403);
+    echo json_encode(['error' => 'Forbidden: Only admin users can modify maps.']);
+    exit;
+}
+
 switch ($action) {
     case 'get_maps':
         $stmt = $pdo->prepare("SELECT m.id, m.name, m.type, m.background_color, m.background_image_url, m.updated_at as lastModified, (SELECT COUNT(*) FROM devices WHERE map_id = m.id AND user_id = ?) as deviceCount FROM maps m WHERE m.user_id = ? ORDER BY m.created_at ASC");

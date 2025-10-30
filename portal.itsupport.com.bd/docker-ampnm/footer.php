@@ -49,6 +49,9 @@
             }
         });
 
+        // Pass admin status to JS for client-side checks
+        window.isAdmin = <?php echo json_encode($_SESSION['is_admin'] ?? false); ?>;
+
         // Initialize page-specific JS
         if (page === 'index.php') {
             initDashboard();
