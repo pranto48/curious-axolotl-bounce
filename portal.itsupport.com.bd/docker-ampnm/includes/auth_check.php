@@ -11,8 +11,17 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
+// --- Fetch User Role ---
+if (!isset($_SESSION['role'])) {
+    $pdo = getDbConnection();
+    $stmt = $pdo->prepare("SELECT role FROM users WHERE id = ?");
+    $stmt->execute([$_SESSION['user_id']]);
+    $user_data = $stmt->fetch(PDO::FETCH_ASSOC);
+    $_SESSION['role'] = $user_data['role'] ?? 'basic';
+}
+
 // Determine if the user is an admin
-$_SESSION['is_admin'] = ($_SESSION['username'] === 'admin');
+$_SESSION['is_admin'] = ($_SESSION['role'] === 'admin');
 
 // --- External License Validation ---
 // This application's license key is now retrieved dynamically from the database.
@@ -81,6 +90,6 @@ if (isset($_SESSION['user_id'])) {
 // Set can_add_device flag
 $max_devices = $_SESSION['license_max_devices'] ?? 0;
 $current_devices = $_SESSION['current_device_count'] ?? 0;
-$_SESSION['can_add_device'] = ($current_license_status === 'active' || $current_license_status === 'free') && ($max_devices === 0 || $current_devices < $max_devices);
+$_SESSION['can_add_device'] = ($_SESSION['role'] === 'admin') && ($current_license_status === 'active' || $current_license_status === 'free') && ($max_devices === 0 || $current_devices < $max_devices);
 
 ?>

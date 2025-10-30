@@ -13,6 +13,14 @@ function initUsers() {
         }).then(res => res.json())
     };
 
+    const renderRoleBadge = (role) => {
+        const base = "px-2 inline-flex text-xs leading-5 font-semibold rounded-full";
+        if (role === 'admin') {
+            return `<span class="${base} bg-cyan-600/50 text-cyan-300">Admin</span>`;
+        }
+        return `<span class="${base} bg-slate-600/50 text-slate-300">Basic</span>`;
+    };
+
     const loadUsers = async () => {
         usersLoader.classList.remove('hidden');
         usersTableBody.innerHTML = '';
@@ -21,9 +29,10 @@ function initUsers() {
             usersTableBody.innerHTML = users.map(user => `
                 <tr class="border-b border-slate-700">
                     <td class="px-6 py-4 whitespace-nowrap text-white">${user.username}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">${renderRoleBadge(user.role)}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-slate-400">${new Date(user.created_at).toLocaleString()}</td>
                     <td class="px-6 py-4 whitespace-nowrap">
-                        ${user.username !== 'admin' ? `<button class="delete-user-btn text-red-500 hover:text-red-400" data-id="${user.id}" data-username="${user.username}"><i class="fas fa-trash mr-2"></i>Delete</button>` : '<span class="text-slate-500">Cannot delete admin</span>'}
+                        ${user.username !== 'admin' ? `<button class="delete-user-btn text-red-500 hover:text-red-400" data-id="${user.id}" data-username="${user.username}"><i class="fas fa-trash mr-2"></i>Delete</button>` : '<span class="text-slate-500">Cannot delete primary admin</span>'}
                     </td>
                 </tr>
             `).join('');
@@ -38,6 +47,7 @@ function initUsers() {
         e.preventDefault();
         const username = e.target.username.value;
         const password = e.target.password.value;
+        const role = e.target.role.value;
         if (!username || !password) return;
 
         const button = createUserForm.querySelector('button[type="submit"]');
@@ -45,7 +55,7 @@ function initUsers() {
         button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Creating...';
 
         try {
-            const result = await api.post('create_user', { username, password });
+            const result = await api.post('create_user', { username, password, role });
             if (result.success) {
                 window.notyf.success('User created successfully.');
                 createUserForm.reset();

@@ -6,7 +6,7 @@ $password = getenv('MYSQL_ROOT_PASSWORD') ?: ''; // Get root password from Docke
 $dbname = getenv('DB_NAME') ?: 'network_monitor';
 
 function message($text, $is_error = false) {
-    $color = $is_error ? '#ef4444' : '#22c55e';
+    $color = $is_error ? '#ef4444' : '#22c5e';
     echo "<p style='color: $color; margin: 4px 0; font-family: monospace;'>$text</p>";
 }
 
@@ -50,9 +50,26 @@ try {
         `id` INT(6) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
         `username` VARCHAR(50) NOT NULL UNIQUE,
         `password` VARCHAR(255) NOT NULL,
+        `role` ENUM('admin', 'basic') DEFAULT 'basic',
         `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
     message("Table 'users' checked/created successfully.");
+
+    // Step 1.1: Migration to add 'role' column if it doesn't exist
+    function columnExists($pdo, $db, $table, $column) {
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ?");
+        $stmt->execute([$db, $table, $column]);
+        return $stmt->fetchColumn() > 0;
+    }
+    
+    if (!columnExists($pdo, $dbname, 'users', 'role')) {
+        $pdo->exec("ALTER TABLE `users` ADD COLUMN `role` ENUM('admin', 'basic') DEFAULT 'basic' AFTER `password`;");
+        message("Migrated 'users' table: added 'role' column.");
+    }
+    // Ensure ENUM is correct and update existing users to 'basic' if null
+    $pdo->exec("ALTER TABLE `users` MODIFY COLUMN `role` ENUM('admin', 'basic') DEFAULT 'basic';");
+    $pdo->exec("UPDATE `users` SET role = 'basic' WHERE role IS NULL;");
+
 
     // Step 2: Ensure admin user exists and set password from environment variable
     $admin_user = 'admin';
@@ -65,7 +82,7 @@ try {
 
     if (!$admin_data) {
         $admin_pass_hash = password_hash($admin_password, PASSWORD_DEFAULT);
-        $pdo->prepare("INSERT INTO `users` (username, password) VALUES (?, ?)")->execute([$admin_user, $admin_pass_hash]);
+        $pdo->prepare("INSERT INTO `users` (username, password, role) VALUES (?, ?, 'admin')")->execute([$admin_user, $admin_pass_hash]);
         $admin_id = $pdo->lastInsertId();
         message("Created default user 'admin'.");
         if ($is_default_password) {
@@ -75,6 +92,9 @@ try {
         }
     } else {
         $admin_id = $admin_data['id'];
+        // Ensure the default admin user has the 'admin' role
+        $pdo->prepare("UPDATE `users` SET role = 'admin' WHERE id = ? AND username = 'admin'")->execute([$admin_id]);
+        
         // Update password if it's changed in the env var and doesn't match the current one
         if (!password_verify($admin_password, $admin_data['password'])) {
             $new_hash = password_hash($admin_password, PASSWORD_DEFAULT);
@@ -217,11 +237,7 @@ try {
     }
 
     // Step 4: Schema migration section to handle upgrades
-    function columnExists($pdo, $db, $table, $column) {
-        $stmt = $pdo->prepare("SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ?");
-        $stmt->execute([$db, $table, $column]);
-        return $stmt->fetchColumn() > 0;
-    }
+    // columnExists function is defined above
 
     if (!columnExists($pdo, $dbname, 'maps', 'user_id')) {
         $pdo->exec("ALTER TABLE `maps` ADD COLUMN `user_id` INT(6) UNSIGNED;");
