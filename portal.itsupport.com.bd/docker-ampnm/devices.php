@@ -1,18 +1,22 @@
 <?php
 require_once 'includes/auth_check.php';
 include 'header.php';
+
+$is_admin = $_SESSION['role'] === 'admin';
 ?>
 
 <main id="app">
     <div class="container mx-auto px-4 py-8">
         <div class="flex flex-col sm:flex-row items-center justify-between mb-6 gap-4">
             <h1 class="text-3xl font-bold text-white">Device Inventory</h1>
+            <?php if ($is_admin): ?>
             <div class="flex items-center gap-2">
                 <input type="file" id="importDevicesFile" class="hidden" accept=".amp">
                 <button id="importDevicesBtn" class="px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-500"><i class="fas fa-file-import mr-2"></i>Import</button>
                 <button id="exportDevicesBtn" class="px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-500"><i class="fas fa-file-export mr-2"></i>Export All</button>
                 <button id="createDeviceBtn" class="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700"><i class="fas fa-plus mr-2"></i>Create New Device</button>
             </div>
+            <?php endif; ?>
         </div>
 
         <div class="bg-slate-800 border border-slate-700 rounded-lg shadow-xl p-6">
@@ -23,9 +27,11 @@ include 'header.php';
                         <input type="search" id="deviceSearchInput" placeholder="Search devices..." class="w-full pl-10 pr-4 py-2 bg-slate-900 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500">
                         <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"></i>
                     </div>
+                    <?php if ($is_admin): ?>
                     <button id="bulkCheckBtn" class="px-4 py-2 bg-green-600/50 text-green-300 rounded-lg hover:bg-green-600/80 flex-shrink-0" title="Check All Device Statuses">
                         <i class="fas fa-sync-alt"></i>
                     </button>
+                    <?php endif; ?>
                 </div>
             </div>
             
@@ -65,6 +71,7 @@ include 'header.php';
     </div>
 
     <!-- Add/Edit Device Modal -->
+    <?php if ($is_admin): ?>
     <div id="deviceModal" class="modal-backdrop hidden">
         <!-- Changed max-h-[90vh] to h-[90vh] and added overflow-hidden to the panel -->
         <div class="modal-panel bg-slate-800 rounded-lg shadow-xl p-6 w-full max-w-md h-[90vh] flex flex-col overflow-hidden">
@@ -176,6 +183,7 @@ include 'header.php';
             </form>
         </div>
     </div>
+    <?php endif; ?>
 </main>
 
 <?php include 'footer.php'; ?>
