@@ -5,7 +5,7 @@ $current_user_id = $_SESSION['user_id'];
 // Enforce admin-only access for modification actions
 $modificationActions = ['create_map', 'update_map', 'delete_map', 'create_edge', 'update_edge', 'delete_edge', 'import_map', 'upload_map_background'];
 
-if (in_array($action, $modificationActions) && ($_SESSION['username'] !== 'admin')) {
+if (in_array($action, $modificationActions) && ($_SESSION['role'] !== 'admin')) {
     http_response_code(403);
     echo json_encode(['error' => 'Forbidden: Only admin users can modify maps.']);
     exit;

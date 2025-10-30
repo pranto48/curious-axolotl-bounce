@@ -3,11 +3,11 @@
 $current_user_id = $_SESSION['user_id'];
 
 // Enforce admin-only access for modification actions
-$modificationActions = ['import_devices', 'create_device', 'update_device', 'delete_device', 'upload_device_icon'];
+$modificationActions = ['import_devices', 'create_device', 'update_device', 'delete_device', 'upload_device_icon', 'check_all_devices_globally', 'ping_all_devices'];
 
-if (in_array($action, $modificationActions) && ($_SESSION['username'] !== 'admin')) {
+if (in_array($action, $modificationActions) && ($_SESSION['role'] !== 'admin')) {
     http_response_code(403);
-    echo json_encode(['error' => 'Forbidden: Only admin users can modify devices.']);
+    echo json_encode(['error' => 'Forbidden: Only admin users can modify devices or trigger bulk checks.']);
     exit;
 }
 
@@ -240,7 +240,7 @@ switch ($action) {
                 if (!empty($device['ip'])) {
                     if (!empty($device['check_port']) && is_numeric($device['check_port'])) {
                         $portCheckResult = checkPortStatus($device['ip'], $device['check_port']);
-                        $new_status = $portCheckResult['success'] ? 'online' : 'offline';
+                        $status = $portCheckResult['success'] ? 'online' : 'offline';
                         $last_avg_time = $portCheckResult['time'];
                         $check_output = $portCheckResult['output'];
                         $details = $portCheckResult['success'] ? "Port {$device['check_port']} is open." : "Port {$device['check_port']} is closed.";
@@ -248,25 +248,25 @@ switch ($action) {
                         $pingResult = executePing($device['ip'], 1);
                         savePingResult($pdo, $device['ip'], $pingResult);
                         $parsedResult = parsePingOutput($pingResult['output']);
-                        $new_status = getStatusFromPingResult($device, $pingResult, $parsedResult, $details);
+                        $status = getStatusFromPingResult($device, $pingResult, $parsedResult, $details);
                         $last_avg_time = $parsedResult['avg_time'] ?? null;
                         $last_ttl = $parsedResult['ttl'] ?? null;
                         $check_output = $pingResult['output'];
                     }
                 }
                 
-                if ($new_status !== 'offline') { $last_seen = date('Y-m-d H:i:s'); }
+                if ($status !== 'offline') { $last_seen = date('Y-m-d H:i:s'); }
                 
-                logStatusChange($pdo, $device['id'], $old_status, $new_status, $details);
-                sendEmailNotification($pdo, $device, $old_status, $new_status, $details); // Trigger email notification
+                logStatusChange($pdo, $device['id'], $old_status, $status, $details);
+                sendEmailNotification($pdo, $device, $old_status, $status, $details); // Trigger email notification
                 $updateStmt = $pdo->prepare("UPDATE devices SET status = ?, last_seen = ?, last_avg_time = ?, last_ttl = ? WHERE id = ? AND user_id = ?");
-                $updateStmt->execute([$new_status, $last_seen, $last_avg_time, $last_ttl, $device['id'], $current_user_id]);
+                $updateStmt->execute([$status, $last_seen, $last_avg_time, $last_ttl, $device['id'], $current_user_id]);
 
                 $updated_devices[] = [
                     'id' => $device['id'],
                     'name' => $device['name'],
                     'old_status' => $old_status,
-                    'status' => $new_status,
+                    'status' => $status,
                     'last_seen' => $last_seen,
                     'last_avg_time' => $last_avg_time,
                     'last_ttl' => $last_ttl,

@@ -2,6 +2,15 @@
 // This file is included by api.php and assumes $pdo, $action, and $input are available.
 $current_user_id = $_SESSION['user_id'];
 
+// Enforce admin-only access for all notification management actions
+$notificationModificationActions = ['get_smtp_settings', 'save_smtp_settings', 'get_device_subscriptions', 'save_device_subscription', 'delete_device_subscription', 'get_all_devices_for_subscriptions'];
+
+if (in_array($action, $notificationModificationActions) && ($_SESSION['role'] !== 'admin')) {
+    http_response_code(403);
+    echo json_encode(['error' => 'Forbidden: Only admin users can manage notifications.']);
+    exit;
+}
+
 switch ($action) {
     case 'get_smtp_settings':
         $stmt = $pdo->prepare("SELECT host, port, username, password, encryption, from_email, from_name FROM smtp_settings WHERE user_id = ?");
