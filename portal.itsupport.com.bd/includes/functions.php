@@ -379,6 +379,57 @@ function updateCustomerProfile($customer_id, $first_name, $last_name, $address, 
     }
 }
 
+// Updates customer password (for customer self-service)
+function updateCustomerPassword($customer_id, $current_password, $new_password) {
+    $pdo = getLicenseDbConnection();
+    $stmt = $pdo->prepare("SELECT password FROM `customers` WHERE id = ?");
+    $stmt->execute([$customer_id]);
+    $customer = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($customer && password_verify($current_password, $customer['password'])) {
+        $hashed_password = password_hash($new_password, PASSWORD_DEFAULT);
+        $stmt = $pdo->prepare("UPDATE `customers` SET password = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?");
+        return $stmt->execute([$hashed_password, $customer_id]);
+    }
+    return false;
+}
+
+// Updates admin password
+function updateAdminPassword($admin_id, $current_password, $new_password) {
+    $pdo = getLicenseDbConnection();
+    $stmt = $pdo->prepare("SELECT password FROM `admin_users` WHERE id = ?");
+    $stmt->execute([$admin_id]);
+    $admin = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($admin && password_verify($current_password, $admin['password'])) {
+        $hashed_password = password_hash($new_password, PASSWORD_DEFAULT);
+        $stmt = $pdo->prepare("UPDATE `admin_users` SET password = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?");
+        return $stmt->execute([$hashed_password, $admin_id]);
+    }
+    return false;
+}
+
+// New function for admin to update core customer details (name, email)
+function adminUpdateCustomerDetails($customer_id, $first_name, $last_name, $email) {
+    $pdo = getLicenseDbConnection();
+    try {
+        $stmt = $pdo->prepare("UPDATE `customers` SET first_name = ?, last_name = ?, email = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?");
+        $stmt->execute([$first_name, $last_name, $email, $customer_id]);
+        return true;
+    } catch (PDOException $e) {
+        error_log("Error updating customer details by admin: " . $e->getMessage());
+        return false;
+    }
+}
+
+// New function for admin to reset customer password
+function adminResetCustomerPassword($customer_id, $new_password) {
+    $pdo = getLicenseDbConnection();
+    $hashed_password = password_hash($new_password, PASSWORD_DEFAULT);
+    $stmt = $pdo->prepare("UPDATE `customers` SET password = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?");
+    return $stmt->execute([$hashed_password, $customer_id]);
+}
+
 
 // --- Basic HTML Header/Footer for the portal ---
 function portal_header($title = "IT Support BD Portal") {

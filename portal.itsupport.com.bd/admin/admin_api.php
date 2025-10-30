@@ -146,6 +146,65 @@ switch ($action) {
             echo json_encode(['success' => false, 'error' => 'An unexpected server error occurred.']);
         }
         break;
+        
+    case 'get_customer_details':
+        $customer_id = $_GET['id'] ?? null;
+        if (!$customer_id) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Customer ID is required.']);
+            exit;
+        }
+        $customer_data = getCustomerData($customer_id);
+        if ($customer_data) {
+            echo json_encode(['success' => true, 'customer' => $customer_data]);
+        } else {
+            http_response_code(404);
+            echo json_encode(['error' => 'Customer not found.']);
+        }
+        break;
+
+    case 'update_customer_details':
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $customer_id = $input['id'] ?? null;
+            $first_name = trim($input['first_name'] ?? '');
+            $last_name = trim($input['last_name'] ?? '');
+            $email = trim($input['email'] ?? '');
+            $new_password = $input['new_password'] ?? null;
+
+            if (!$customer_id || empty($first_name) || empty($last_name) || empty($email)) {
+                http_response_code(400);
+                echo json_encode(['error' => 'All required fields must be provided.']);
+                exit;
+            }
+
+            $pdo = getLicenseDbConnection();
+            $pdo->beginTransaction();
+            try {
+                // 1. Update core details
+                if (!adminUpdateCustomerDetails($customer_id, $first_name, $last_name, $email)) {
+                    throw new Exception("Failed to update customer details.");
+                }
+
+                // 2. Reset password if provided
+                if (!empty($new_password)) {
+                    if (strlen($new_password) < 6) {
+                        throw new Exception("New password must be at least 6 characters long.");
+                    }
+                    if (!adminResetCustomerPassword($customer_id, $new_password)) {
+                        throw new Exception("Failed to reset customer password.");
+                    }
+                }
+
+                $pdo->commit();
+                echo json_encode(['success' => true, 'message' => 'Customer details updated successfully.']);
+
+            } catch (Exception $e) {
+                $pdo->rollBack();
+                http_response_code(500);
+                echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+            }
+        }
+        break;
 
     default:
         http_response_code(404);
