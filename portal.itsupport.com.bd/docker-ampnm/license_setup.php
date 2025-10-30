@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/includes/bootstrap.php'; // Load bootstrap for DB connection and functions
+require_once __DIR__ . '/includes/license_manager.php'; // Load license manager for decryption function
 
 $message = '';
 
@@ -22,39 +23,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             error_log("ERROR: license_setup.php failed to get installation ID.");
             $message = '<div class="bg-red-500/20 border border-red-500/30 text-red-300 text-sm rounded-lg p-3 text-center">Application installation ID missing. Please re-run database setup.</div>';
         } else {
-            $ch = curl_init(LICENSE_API_URL);
-            $post_fields = json_encode([
+            $license_api_url = LICENSE_API_URL;
+            $post_data = [
                 'app_license_key' => $entered_license_key,
                 'user_id' => 'setup_user', // A dummy user ID for initial validation
                 'current_device_count' => 0, // No devices yet
                 'installation_id' => $installation_id // Pass the unique installation ID
+            ];
+
+            // --- Use stream context for POST request with file_get_contents ---
+            $context = stream_context_create([
+                'http' => [
+                    'method' => 'POST',
+                    'header' => "Content-Type: application/json\r\n",
+                    'content' => json_encode($post_data),
+                    'timeout' => 10, // 10 second timeout
+                ],
+                'ssl' => [
+                    'verify_peer' => false,
+                    'verify_peer_name' => false,
+                ]
             ]);
-            error_log("DEBUG: license_setup.php sending to LICENSE_API_URL: " . LICENSE_API_URL . " with payload: " . $post_fields);
 
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, $post_fields);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 10); // 10-second timeout for the external API call
+            $encrypted_response = @file_get_contents($license_api_url, false, $context);
 
-            $response = curl_exec($ch);
-            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            $curlError = curl_error($ch);
-            curl_close($ch);
-
-            error_log("DEBUG: license_setup.php received response: HTTP {$httpCode}, cURL Error: {$curlError}, Body: {$response}");
-
-            if ($response === false) {
-                error_log("License API cURL Error during setup: " . $curlError);
-                $message = '<div class="bg-red-500/20 border border-red-500/30 text-red-300 text-sm rounded-lg p-3 text-center">Failed to connect to license verification service.</div>';
-            } elseif ($httpCode !== 200) {
-                error_log("License API HTTP Error during setup: " . $httpCode . " - Response: " . $response);
-                $message = '<div class="bg-red-500/20 border border-red-500/30 text-red-300 text-sm rounded-lg p-3 text-center">License verification service returned an error.</div>';
+            if ($encrypted_response === false) {
+                $error = error_get_last();
+                $error_message = $error['message'] ?? 'Unknown connection error.';
+                error_log("License API connection Error during setup: {$error_message}");
+                $message = '<div class="bg-red-500/20 border border-red-500/30 text-red-300 text-sm rounded-lg p-3 text-center">Failed to connect to license verification service. Network/DNS error: ' . htmlspecialchars($error_message) . '</div>';
             } else {
-                $licenseData = json_decode($response, true);
-                if (json_last_error() !== JSON_ERROR_NONE) {
-                    error_log("License API JSON Parse Error during setup: " . json_last_error_msg() . " - Response: " . $response);
-                    $message = '<div class="bg-red-500/20 border border-red-500/30 text-red-300 text-sm rounded-lg p-3 text-center">Invalid response from license verification service.</div>';
+                $licenseData = decryptLicenseData($encrypted_response);
+
+                if ($licenseData === false) {
+                    error_log("License API Decryption/Parse Error during setup.");
+                    $message = '<div class="bg-red-500/20 border border-red-500/30 text-red-300 text-sm rounded-lg p-3 text-center">Invalid or corrupted response from license verification service.</div>';
                 } elseif (isset($licenseData['success']) && $licenseData['success'] === true) {
                     // License is valid, save it to app_settings
                     if (setAppLicenseKey($entered_license_key)) {

@@ -4,6 +4,38 @@
 // Define how often to re-verify the license with the portal (in seconds)
 define('LICENSE_VERIFICATION_INTERVAL', 300); // 5 minutes
 
+// --- Encryption/Decryption Configuration ---
+// NOTE: This key MUST match the key used in the portal's verify_license.php
+define('ENCRYPTION_KEY', 'ITSupportBD_SecureKey_2024');
+define('CIPHER_METHOD', 'aes-256-cbc');
+
+function decryptLicenseData(string $encrypted_data) {
+    $data = base64_decode($encrypted_data);
+    $iv_length = openssl_cipher_iv_length(CIPHER_METHOD);
+
+    if (strlen($data) < $iv_length) {
+        error_log("DECRYPT_ERROR: Encrypted data too short.");
+        return false;
+    }
+
+    $iv = substr($data, 0, $iv_length);
+    $encrypted = substr($data, $iv_length);
+    $decrypted = openssl_decrypt($encrypted, CIPHER_METHOD, ENCRYPTION_KEY, 0, $iv);
+
+    if ($decrypted === false) {
+        error_log("DECRYPT_ERROR: Decryption failed. Key mismatch or corrupted data.");
+        return false;
+    }
+
+    $result = json_decode($decrypted, true);
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        error_log("DECRYPT_ERROR: JSON decoding failed after decryption: " . json_last_error_msg());
+        return false;
+    }
+    return $result;
+}
+// --- End Encryption/Decryption Configuration ---
+
 // Function to generate a UUID (Universally Unique Identifier)
 function generateUuid() {
     $data = random_bytes(16);
@@ -13,43 +45,35 @@ function generateUuid() {
 }
 
 /**
- * Performs the actual license verification with the portal API.
+ * Performs the actual license verification with the portal API using file_get_contents.
  * Caches results in session.
  */
 function verifyLicenseWithPortal() {
-    // Only attempt verification if a user is logged in to the AMPNM app
     if (!isset($_SESSION['user_id'])) {
         $_SESSION['license_status'] = 'unverified_login_required';
         $_SESSION['license_message'] = 'Please log in to verify your license.';
         $_SESSION['license_max_devices'] = 0;
         $_SESSION['license_expires_at'] = null;
-        error_log("LICENSE_ERROR: License verification skipped. User not logged in.");
         return;
     }
 
-    // Check if we need to re-verify (based on interval)
     if (isset($_SESSION['license_last_verified']) && (time() - $_SESSION['license_last_verified'] < LICENSE_VERIFICATION_INTERVAL)) {
         return; // Use cached data
     }
 
     $app_license_key = getAppSetting('app_license_key');
     $installation_id = getAppSetting('installation_id');
-    $user_id = $_SESSION['user_id']; // Now guaranteed to be set
+    $user_id = $_SESSION['user_id'];
 
-    error_log("DEBUG: License verification attempt. User ID: {$user_id}, Installation ID: {$installation_id}, License Key: " . (empty($app_license_key) ? 'EMPTY' : 'PRESENT'));
-
-    // If no license key or installation ID, mark as invalid and return
     if (empty($app_license_key) || empty($installation_id)) {
         $_SESSION['license_status'] = 'unconfigured';
         $_SESSION['license_message'] = 'License key or installation ID is missing/unconfigured.';
         $_SESSION['license_max_devices'] = 0;
         $_SESSION['license_expires_at'] = null;
         $_SESSION['license_last_verified'] = time();
-        error_log("LICENSE_ERROR: License verification aborted. License key or installation ID is empty in Docker app's settings.");
         return;
     }
 
-    // Get current device count for the user
     $pdo = getDbConnection();
     $stmt = $pdo->prepare("SELECT COUNT(*) FROM `devices` WHERE user_id = ?");
     $stmt->execute([$user_id]);
@@ -62,67 +86,45 @@ function verifyLicenseWithPortal() {
         'installation_id' => $installation_id
     ];
 
-    $license_api_url = LICENSE_API_URL; // Get the URL from config.php
+    $license_api_url = LICENSE_API_URL;
 
-    // --- DNS Resolution Check ---
-    $parsed_url = parse_url($license_api_url);
-    $hostname = $parsed_url['host'] ?? null;
-    $resolved_ip = null;
+    // --- Use stream context for POST request with file_get_contents ---
+    $context = stream_context_create([
+        'http' => [
+            'method' => 'POST',
+            'header' => "Content-Type: application/json\r\n",
+            'content' => json_encode($post_data),
+            'timeout' => 10, // 10 second timeout
+            // NOTE: We rely on the Docker environment's PHP configuration for SSL/TLS.
+            // If this fails, it's a fundamental network/DNS issue.
+        ],
+        // Temporarily disable SSL verification for stream context if needed for debugging
+        'ssl' => [
+            'verify_peer' => false,
+            'verify_peer_name' => false,
+        ]
+    ]);
 
-    if ($hostname) {
-        $resolved_ip = gethostbyname($hostname);
-        if ($resolved_ip === $hostname) { // gethostbyname returns hostname itself on failure
-            $_SESSION['license_status'] = 'error';
-            $_SESSION['license_message'] = "DNS resolution failed for license server: '{$hostname}'. Check network configuration.";
-            $_SESSION['license_max_devices'] = 0;
-            $_SESSION['license_expires_at'] = null;
-            $_SESSION['license_last_verified'] = time();
-            error_log("LICENSE_ERROR: DNS resolution failed for {$hostname}.");
-            return;
-        }
-        error_log("DEBUG: DNS resolved {$hostname} to {$resolved_ip}.");
-    } else {
-        error_log("DEBUG: Could not parse hostname from LICENSE_API_URL: {$license_api_url}");
-    }
+    $encrypted_response = @file_get_contents($license_api_url, false, $context);
 
-    $ch = curl_init($license_api_url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($post_data));
-    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 10); // 10 second timeout
-    
-    // --- TEMPORARY DEBUGGING: Disable SSL verification and enable verbose output ---
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-    curl_setopt($ch, CURLOPT_VERBOSE, true); // This will output verbose cURL info to stderr/error_log
-    // --- END TEMPORARY DEBUGGING ---
-
-    $response = curl_exec($ch);
-    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $curl_errno = curl_errno($ch);
-    $curl_error = curl_error($ch);
-    curl_close($ch);
-
-    error_log("DEBUG: cURL request sent to " . $license_api_url . " with payload: " . json_encode($post_data));
-    error_log("DEBUG: cURL response from portal: HTTP Code: {$http_code}, cURL Error No: {$curl_errno}, cURL Error: {$curl_error}, Response Body: " . ($response === false ? 'FALSE' : $response));
-
-    if ($response === false) {
-        error_log("LICENSE_ERROR: License server unreachable. cURL error: {$curl_error} (Error No: {$curl_errno})");
+    if ($encrypted_response === false) {
+        $error = error_get_last();
+        $error_message = $error['message'] ?? 'Unknown connection error.';
+        error_log("LICENSE_ERROR: License server unreachable via file_get_contents. Error: {$error_message}");
         $_SESSION['license_status'] = 'error';
-        $_SESSION['license_message'] = "Could not connect to license server. cURL Error ({$curl_errno}): {$curl_error}. Check network or try again later.";
+        $_SESSION['license_message'] = "Could not connect to license server. Network/DNS error: {$error_message}.";
         $_SESSION['license_max_devices'] = 0;
         $_SESSION['license_expires_at'] = null;
         $_SESSION['license_last_verified'] = time();
         return;
     }
 
-    $result = json_decode($response, true);
+    $result = decryptLicenseData($encrypted_response);
 
-    if ($http_code !== 200 || !isset($result['success'])) {
-        error_log("LICENSE_ERROR: License server returned an unexpected/invalid response (HTTP $http_code). Response: " . ($response ?? 'Empty response.'));
+    if ($result === false) {
+        error_log("LICENSE_ERROR: Failed to decrypt or parse license response.");
         $_SESSION['license_status'] = 'error';
-        $_SESSION['license_message'] = 'License server returned an unexpected response. ' . ($result['message'] ?? 'Unknown error.');
+        $_SESSION['license_message'] = 'Failed to decrypt license response. Key mismatch or corrupted data.';
         $_SESSION['license_max_devices'] = 0;
         $_SESSION['license_expires_at'] = null;
         $_SESSION['license_last_verified'] = time();
@@ -133,38 +135,14 @@ function verifyLicenseWithPortal() {
         $_SESSION['license_status'] = 'active';
         $_SESSION['license_message'] = $result['message'] ?? 'License is active.';
         $_SESSION['license_max_devices'] = $result['max_devices'] ?? 1;
-        $_SESSION['license_expires_at'] = $result['expires_at'] ?? null; // Portal should return this
+        $_SESSION['license_expires_at'] = $result['expires_at'] ?? null;
         error_log("LICENSE_INFO: License verification successful. Status: active, Max Devices: {$result['max_devices']}.");
     } else {
         $_SESSION['license_status'] = $result['actual_status'] ?? 'invalid';
         $_SESSION['license_message'] = $result['message'] ?? 'License is invalid.';
         $_SESSION['license_max_devices'] = 0;
         $_SESSION['license_expires_at'] = null;
-
-        // Log specific error based on actual_status
-        switch ($_SESSION['license_status']) {
-            case 'not_found':
-                error_log("LICENSE_ERROR: License key '{$app_license_key}' not found on portal.");
-                break;
-            case 'expired':
-                error_log("LICENSE_ERROR: License key '{$app_license_key}' has expired.");
-                break;
-            case 'revoked':
-                error_log("LICENSE_ERROR: License key '{$app_license_key}' has been revoked by admin.");
-                break;
-            case 'in_use':
-                error_log("LICENSE_ERROR: License key '{$app_license_key}' is currently in use by another server (Installation ID: {$installation_id}).");
-                break;
-            case 'invalid_request':
-                error_log("LICENSE_ERROR: Invalid request sent to license server. Missing data in payload.");
-                break;
-            case 'error':
-                error_log("LICENSE_ERROR: An internal error occurred on the license server during verification.");
-                break;
-            default:
-                error_log("LICENSE_ERROR: License key '{$app_license_key}' is invalid for an unknown reason. Status: {$_SESSION['license_status']}.");
-                break;
-        }
+        error_log("LICENSE_ERROR: License verification failed. Status: {$_SESSION['license_status']}. Message: {$_SESSION['license_message']}");
     }
     $_SESSION['license_last_verified'] = time();
 }
@@ -186,8 +164,8 @@ $app_license_key = getAppSetting('app_license_key');
 // If license key is not set, redirect to setup page
 if (empty($app_license_key)) {
     // Only redirect if not already on the setup page to prevent infinite loops
-    if (basename($_SERVER['PHP_SELF']) !== 'license_setup_page.php') {
-        header('Location: license_setup_page.php');
+    if (basename($_SERVER['PHP_SELF']) !== 'license_setup.php') {
+        header('Location: license_setup.php');
         exit;
     }
 } else {

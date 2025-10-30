@@ -1,8 +1,23 @@
 <?php
-header('Content-Type: application/json');
+header('Content-Type: text/plain'); // Change header to plain text for raw encrypted data
 
 // Include the license service's database configuration
 require_once __DIR__ . '/config.php';
+
+// --- Encryption/Decryption Configuration ---
+// NOTE: This key MUST be kept secret and MUST match the key used in the Docker app's license_manager.php
+// For security, this should ideally be stored in a secure environment variable, but for this exercise, we define it here.
+define('ENCRYPTION_KEY', 'ITSupportBD_SecureKey_2024');
+define('CIPHER_METHOD', 'aes-256-cbc');
+
+function encryptLicenseData(array $data) {
+    $iv_length = openssl_cipher_iv_length(CIPHER_METHOD);
+    $iv = openssl_random_pseudo_bytes($iv_length);
+    $encrypted = openssl_encrypt(json_encode($data), CIPHER_METHOD, ENCRYPTION_KEY, 0, $iv);
+    return base64_encode($iv . $encrypted);
+}
+// --- End Encryption/Decryption Configuration ---
+
 
 $input = json_decode(file_get_contents('php://input'), true);
 
@@ -16,11 +31,9 @@ $installation_id = $input['installation_id'] ?? null;
 
 // Use empty() for a more robust check against null, empty strings, and 0
 if (empty($app_license_key) || empty($user_id) || empty($installation_id)) {
-    error_log("License verification failed: Missing app_license_key, user_id, or installation_id. " . 
-              "app_license_key: " . (empty($app_license_key) ? 'MISSING' : 'PRESENT') . 
-              ", user_id: " . (empty($user_id) ? 'MISSING' : 'PRESENT') . 
-              ", installation_id: " . (empty($installation_id) ? 'MISSING' : 'PRESENT'));
-    echo json_encode([
+    error_log("License verification failed: Missing app_license_key, user_id, or installation_id.");
+    // Return an encrypted failure message
+    echo encryptLicenseData([
         'success' => false,
         'message' => 'Missing application license key, user ID, or installation ID.',
         'actual_status' => 'invalid_request'
@@ -37,21 +50,20 @@ try {
     $license = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$license) {
-        echo json_encode([
+        echo encryptLicenseData([
             'success' => false,
             'message' => 'Invalid or expired application license key.',
-            'actual_status' => 'not_found' // Provide a status for clarity
+            'actual_status' => 'not_found'
         ]);
         exit;
     }
 
     // 2. Check license status and expiry
     if ($license['status'] !== 'active' && $license['status'] !== 'free') {
-        // If not active or free, return the actual status
-        echo json_encode([
+        echo encryptLicenseData([
             'success' => false,
             'message' => 'License is ' . $license['status'] . '.',
-            'actual_status' => $license['status'] // Explicitly return the actual status
+            'actual_status' => $license['status']
         ]);
         exit;
     }
@@ -60,10 +72,10 @@ try {
         // Automatically update status to 'expired' if past due
         $stmt = $pdo->prepare("UPDATE `licenses` SET status = 'expired', updated_at = NOW() WHERE id = ?");
         $stmt->execute([$license['id']]);
-        echo json_encode([
+        echo encryptLicenseData([
             'success' => false,
             'message' => 'License has expired.',
-            'actual_status' => 'expired' // Explicitly return expired status
+            'actual_status' => 'expired'
         ]);
         exit;
     }
@@ -76,32 +88,33 @@ try {
         error_log("License '{$app_license_key}' bound to new installation ID: {$installation_id}");
     } elseif ($license['bound_installation_id'] !== $installation_id) {
         // License is bound to a different installation_id, deny access
-        echo json_encode([
+        echo encryptLicenseData([
             'success' => false,
             'message' => 'License is already in use by another server.',
-            'actual_status' => 'in_use' // New status for license in use elsewhere
+            'actual_status' => 'in_use'
         ]);
         exit;
     }
 
-    // Update current_devices count and last_active_at timestamp in the license portal's database
+    // 4. Update current_devices count and last_active_at timestamp
     $stmt = $pdo->prepare("UPDATE `licenses` SET current_devices = ?, last_active_at = NOW(), updated_at = NOW() WHERE id = ?");
     $stmt->execute([$current_device_count, $license['id']]);
 
-    // Return max_devices to the AMPNM app, which will then calculate can_add_device
-    echo json_encode([
+    // 5. Return encrypted success data
+    echo encryptLicenseData([
         'success' => true,
         'message' => 'License is active.',
-        'max_devices' => $license['max_devices'] ?? 1, // Provide max_devices to the AMPNM app
-        'actual_status' => $license['status'] // Explicitly return active status
+        'max_devices' => $license['max_devices'] ?? 1,
+        'actual_status' => $license['status'],
+        'expires_at' => $license['expires_at']
     ]);
 
 } catch (Exception $e) {
     error_log("License verification error: " . $e->getMessage());
-    echo json_encode([
+    echo encryptLicenseData([
         'success' => false,
         'message' => 'An internal error occurred during license verification.',
-        'actual_status' => 'error' // Provide a status for clarity
+        'actual_status' => 'error'
     ]);
 }
 ?>
