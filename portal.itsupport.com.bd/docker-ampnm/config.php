@@ -7,7 +7,8 @@ define('DB_PASSWORD', getenv('DB_PASSWORD') ?: '');
 define('DB_NAME', getenv('DB_NAME') ?: 'network_monitor');
 
 // License System Configuration
-define('LICENSE_API_URL', getenv('LICENSE_API_URL') ?: 'http://localhost:8080/verify_license.php'); // Default to local portal if not set
+// IMPORTANT: Changed fallback to the correct public HTTPS URL.
+define('LICENSE_API_URL', getenv('LICENSE_API_URL') ?: 'https://portal.itsupport.com.bd/verify_license.php'); 
 define('APP_LICENSE_KEY_ENV', getenv('APP_LICENSE_KEY') ?: ''); // This is the key from docker-compose.yml, might be empty
 
 // Create database connection
