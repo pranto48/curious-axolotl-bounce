@@ -7,7 +7,7 @@ MapApp.mapManager = {
         if (name) { 
             try {
                 const response = await MapApp.api.post('create_map', { name }); 
-                console.log("Create map API response:", response); // Added log
+                console.log("API response for create_map:", response); // Added log for debugging
                 if (response.success) {
                     await MapApp.mapManager.loadMaps(); 
                     MapApp.ui.els.mapSelector.value = response.map.id; 

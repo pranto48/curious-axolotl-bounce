@@ -97,7 +97,8 @@ function initCreateDevice() {
 
         try {
             const result = await api.post('create_device', data);
-            if (result.success) { // Now this check will work
+            console.log("API response for create_device:", result); // Added log for debugging
+            if (result.success) {
                 window.notyf.success('Device created successfully!');
                 createDeviceForm.reset();
                 toggleFields(deviceTypeSelect.value); // Reset fields visibility
@@ -107,6 +108,8 @@ function initCreateDevice() {
                 if (iconUploadInput.files.length > 0) {
                     await uploadIcon(result.device.id, iconUploadInput.files[0]); // Use result.device.id
                 }
+                // Redirect to devices.php after successful creation
+                window.location.href = 'devices.php';
             } else {
                 window.notyf.error(`Error: ${result.error}`);
             }
