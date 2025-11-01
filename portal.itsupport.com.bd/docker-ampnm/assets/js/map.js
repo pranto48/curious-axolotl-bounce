@@ -62,6 +62,8 @@ function initMap() {
         window.cleanup = null;
     };
 
+    console.log('DEBUG: mapPermissionsBtn element:', els.mapPermissionsBtn); // Debugging log
+
     // Event Listeners Setup
     if (IS_ADMIN) {
         // Update openDeviceModal to only handle editing
@@ -401,7 +403,7 @@ function initMap() {
                 } else if (updatedDevice.type === 'box') {
                     visNode = { ...baseNode, shape: 'box', color: { background: 'rgba(49, 65, 85, 0.5)', border: '#475569' }, margin: 20, level: -1 };
                 } else {
-                    visNode = { ...baseNode, shape: 'icon', icon: { face: "'Font Awesome 6 Free'", weight: "900", code: MapApp.config.iconMap[updatedDevice.type] || MapApp.config.iconMap.other, size: parseInt(updatedDevice.icon_size) || 50, color: MapApp.config.statusColorMap[updatedDevice.status] || MapApp.config.statusColorMap.unknown } };
+                    visNode = { ...baseNode, shape: 'icon', icon: { face: "'Font Awesome 6 Free'", weight: "900", code: MapApp.config.iconMap[updatedDevice.type] || MapApp.config.iconMap.other, size: parseInt(updated.icon_size) || 50, color: MapApp.config.statusColorMap[updatedDevice.status] || MapApp.config.statusColorMap.unknown } };
                 }
                 state.nodes.add(visNode);
                 
@@ -474,40 +476,46 @@ function initMap() {
         });
 
         // Map Permissions Modal Logic (New)
-        els.mapPermissionsBtn.addEventListener('click', async () => {
-            if (!state.currentMapId) {
-                window.notyf.error('Please select a map first.');
-                return;
-            }
-            const currentMap = state.maps.find(m => m.id == state.currentMapId);
-            els.permissionsMapName.textContent = currentMap ? currentMap.name : 'Unknown Map';
-            els.permissionsMapId.value = state.currentMapId;
-            openModal('mapPermissionsModal');
-            
-            els.userPermissionsList.innerHTML = '<div class="text-center py-4"><div class="loader mx-auto w-4 h-4"></div><span class="ml-2 text-sm text-slate-400">Loading users...</span></div>';
-            try {
-                const { all_users, map_user_ids } = await api.get('get_all_users_with_map_permissions', { map_id: state.currentMapId });
-                
-                if (all_users.length === 0) {
-                    els.userPermissionsList.innerHTML = '<p class="text-sm text-slate-500">No users found to assign permissions.</p>';
+        if (els.mapPermissionsBtn) { // Ensure button exists before adding listener
+            els.mapPermissionsBtn.addEventListener('click', async () => {
+                console.log('DEBUG: Map Permissions button clicked.'); // Debugging log
+                if (!state.currentMapId) {
+                    window.notyf.error('Please select a map first.');
                     return;
                 }
+                const currentMap = state.maps.find(m => m.id == state.currentMapId);
+                els.permissionsMapName.textContent = currentMap ? currentMap.name : 'Unknown Map';
+                els.permissionsMapId.value = state.currentMapId;
+                openModal('mapPermissionsModal');
+                
+                els.userPermissionsList.innerHTML = '<div class="text-center py-4"><div class="loader mx-auto w-4 h-4"></div><span class="ml-2 text-sm text-slate-400">Loading users...</span></div>';
+                try {
+                    const { all_users, map_user_ids } = await api.get('get_all_users_with_map_permissions', { map_id: state.currentMapId });
+                    
+                    if (all_users.length === 0) {
+                        els.userPermissionsList.innerHTML = '<p class="text-sm text-slate-500">No users found to assign permissions.</p>';
+                        return;
+                    }
 
-                els.userPermissionsList.innerHTML = all_users.map(user => {
-                    const isChecked = map_user_ids.includes(user.id.toString());
-                    return `
-                        <label class="flex items-center text-sm font-medium text-slate-400">
-                            <input type="checkbox" name="user_id[]" value="${user.id}" class="h-4 w-4 rounded border-slate-500 bg-slate-700 text-cyan-600 focus:ring-cyan-500" ${isChecked ? 'checked' : ''} ${user.role === 'admin' ? 'disabled' : ''}>
-                            <span class="ml-2">${user.username} (${user.role}) ${user.role === 'admin' ? '(Admin - Always has access)' : ''}</span>
-                        </label>
-                    `;
-                }).join('');
+                    els.userPermissionsList.innerHTML = all_users.map(user => {
+                        const isChecked = map_user_ids.includes(user.id.toString());
+                        return `
+                            <label class="flex items-center text-sm font-medium text-slate-400">
+                                <input type="checkbox" name="user_id[]" value="${user.id}" class="h-4 w-4 rounded border-slate-500 bg-slate-700 text-cyan-600 focus:ring-cyan-500" ${isChecked ? 'checked' : ''} ${user.role === 'admin' ? 'disabled' : ''}>
+                                <span class="ml-2">${user.username} (${user.role}) ${user.role === 'admin' ? '(Admin - Always has access)' : ''}</span>
+                            </label>
+                        `;
+                    }).join('');
 
-            } catch (error) {
-                console.error('Failed to load user map permissions:', error);
-                els.userPermissionsList.innerHTML = '<p class="text-sm text-red-400">Failed to load user permissions.</p>';
-            }
-        });
+                } catch (error) {
+                    console.error('Failed to load user map permissions:', error);
+                    els.userPermissionsList.innerHTML = '<p class="text-sm text-red-400">Failed to load user permissions.</p>';
+                }
+            });
+        } else {
+            console.error('ERROR: mapPermissionsBtn not found, cannot attach event listener.');
+        }
+
 
         els.cancelMapPermissionsBtn.addEventListener('click', () => closeModal('mapPermissionsModal'));
 
@@ -517,8 +525,9 @@ function initMap() {
             const selectedUserIds = Array.from(els.userPermissionsList.querySelectorAll('input[type="checkbox"]:checked'))
                                         .map(checkbox => checkbox.value);
             
-            // Ensure admin user always has access, even if their checkbox is disabled/unchecked
-            const adminUser = state.users.find(u => u.role === 'admin'); // Assuming state.users is populated elsewhere or fetched here
+            // Fetch all users again to ensure we have the admin user's ID for the override
+            const { all_users } = await api.get('get_all_users_with_map_permissions', { map_id: mapId });
+            const adminUser = all_users.find(u => u.role === 'admin');
             if (adminUser && !selectedUserIds.includes(adminUser.id.toString())) {
                 selectedUserIds.push(adminUser.id.toString());
             }
