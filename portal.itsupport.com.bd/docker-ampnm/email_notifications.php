@@ -45,7 +45,10 @@ include 'header.php';
                         <input type="text" id="smtpFromName" name="from_name" class="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2 focus:ring-2 focus:ring-cyan-500">
                     </div>
                 </div>
-                <div class="flex justify-end">
+                <div class="flex justify-end gap-4">
+                    <button type="button" id="testSmtpBtn" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                        <i class="fas fa-paper-plane mr-2"></i>Test Settings
+                    </button>
                     <button type="submit" id="saveSmtpBtn" class="px-6 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700">
                         <i class="fas fa-save mr-2"></i>Save Settings
                     </button>

@@ -11,6 +11,7 @@ function initEmailNotifications() {
         smtpFromEmail: document.getElementById('smtpFromEmail'),
         smtpFromName: document.getElementById('smtpFromName'),
         saveSmtpBtn: document.getElementById('saveSmtpBtn'),
+        testSmtpBtn: document.getElementById('testSmtpBtn'), // New button
         smtpLoader: document.getElementById('smtpLoader'),
 
         addSubscriptionBtn: document.getElementById('addSubscriptionBtn'),
@@ -89,13 +90,48 @@ function initEmailNotifications() {
         }
     });
 
+    els.testSmtpBtn.addEventListener('click', async () => {
+        // First, ensure settings are saved or at least valid for testing
+        const formData = new FormData(els.smtpSettingsForm);
+        const settings = Object.fromEntries(formData.entries());
+
+        if (!settings.host || !settings.port || !settings.username || !settings.from_email) {
+            window.notyf.error('Please fill in all required SMTP settings before testing.');
+            return;
+        }
+
+        const testRecipient = prompt("Enter recipient email for test (e.g., your email):", settings.from_email);
+        if (!testRecipient) {
+            window.notyf.info('Test email cancelled.');
+            return;
+        }
+
+        els.testSmtpBtn.disabled = true;
+        els.testSmtpBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Sending Test...';
+
+        try {
+            const result = await api.post('test_smtp_settings', { ...settings, recipient_email: testRecipient });
+            if (result.success) {
+                window.notyf.success(result.message);
+            } else {
+                window.notyf.error(`Test failed: ${result.error}`);
+            }
+        } catch (error) {
+            window.notyf.error('An unexpected error occurred during the test. Check console for details.');
+            console.error(error);
+        } finally {
+            els.testSmtpBtn.disabled = false;
+            els.testSmtpBtn.innerHTML = '<i class="fas fa-paper-plane mr-2"></i>Test Settings';
+        }
+    });
+
     // --- Device Subscriptions Logic ---
 
     const populateEditorDeviceSelect = async () => {
         try {
             allDevices = await api.get('get_all_devices_for_subscriptions');
             els.editorDeviceSelect.innerHTML = '<option value="">-- Select a device --</option>' + 
-                allDevices.map(d => `<option value="${d.id}">${d.name} (${d.ip || 'No IP'}) ${d.map_name ? `[${d.map_name}]` : ''}</option>`).join('');
+                allDevices.map(d => `<option value="${d.id}">${d.name} (${d.ip || 'N/A'}) ${d.map_name ? `[${d.map_name}]` : ''}</option>`).join('');
         } catch (error) {
             console.error('Failed to load devices for subscriptions:', error);
             window.notyf.error('Failed to load devices for subscriptions.');

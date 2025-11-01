@@ -2,8 +2,14 @@
 // This file is included by api.php and assumes $pdo, $action, and $input are available.
 $current_user_id = $_SESSION['user_id'];
 
+// Include PHPMailer classes
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
+
+require_once __DIR__ . '/../vendor/autoload.php'; // Adjust path to autoload.php
+
 // Enforce admin-only access for all notification management actions
-$notificationModificationActions = ['get_smtp_settings', 'save_smtp_settings', 'get_device_subscriptions', 'save_device_subscription', 'delete_device_subscription', 'get_all_devices_for_subscriptions', 'get_all_device_subscriptions'];
+$notificationModificationActions = ['get_smtp_settings', 'save_smtp_settings', 'get_device_subscriptions', 'save_device_subscription', 'delete_device_subscription', 'get_all_devices_for_subscriptions', 'get_all_device_subscriptions', 'test_smtp_settings'];
 
 if (in_array($action, $notificationModificationActions) && ($_SESSION['role'] !== 'admin')) {
     http_response_code(403);
@@ -58,6 +64,57 @@ switch ($action) {
                 $stmt->execute([$current_user_id, $host, $port, $username, $password, $encryption, $from_email, $from_name]);
             }
             echo json_encode(['success' => true, 'message' => 'SMTP settings saved successfully.']);
+        }
+        break;
+
+    case 'test_smtp_settings':
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $recipient_email = $input['recipient_email'] ?? '';
+
+            if (empty($recipient_email) || !filter_var($recipient_email, FILTER_VALIDATE_EMAIL)) {
+                http_response_code(400);
+                echo json_encode(['error' => 'Valid recipient email is required for testing.']);
+                exit;
+            }
+
+            // Fetch actual SMTP settings (including unmasked password)
+            $stmt = $pdo->prepare("SELECT host, port, username, password, encryption, from_email, from_name FROM smtp_settings WHERE user_id = ?");
+            $stmt->execute([$current_user_id]);
+            $settings = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$settings) {
+                http_response_code(400);
+                echo json_encode(['error' => 'SMTP settings not configured. Please save them first.']);
+                exit;
+            }
+
+            $mail = new PHPMailer(true);
+            try {
+                //Server settings
+                $mail->isSMTP();                                            // Send using SMTP
+                $mail->Host       = $settings['host'];                      // Set the SMTP server to send through
+                $mail->SMTPAuth   = true;                                   // Enable SMTP authentication
+                $mail->Username   = $settings['username'];                  // SMTP username
+                $mail->Password   = $settings['password'];                  // SMTP password
+                $mail->SMTPSecure = $settings['encryption'] === 'ssl' ? PHPMailer::ENCRYPTION_SMTPS : ($settings['encryption'] === 'tls' ? PHPMailer::ENCRYPTION_STARTTLS : false); // Enable TLS encryption; `PHPMailer::ENCRYPTION_SMTPS` encouraged
+                $mail->Port       = $settings['port'];                      // TCP port to connect to
+
+                //Recipients
+                $mail->setFrom($settings['from_email'], $settings['from_name'] ?: 'AMPNM Notifications');
+                $mail->addAddress($recipient_email);                        // Add a recipient
+
+                //Content
+                $mail->isHTML(true);                                        // Set email format to HTML
+                $mail->Subject = 'AMPNM Test Email Notification';
+                $mail->Body    = 'This is a test email from your AMPNM application. Your SMTP settings are working correctly!';
+                $mail->AltBody = 'This is a test email from your AMPNM application. Your SMTP settings are working correctly!';
+
+                $mail->send();
+                echo json_encode(['success' => true, 'message' => 'Test email sent successfully to ' . htmlspecialchars($recipient_email) . '.']);
+            } catch (Exception $e) {
+                error_log("SMTP Test Email Error: " . $e->getMessage());
+                echo json_encode(['success' => false, 'error' => 'Failed to send test email. Mailer Error: ' . $e->getMessage()]);
+            }
         }
         break;
 
