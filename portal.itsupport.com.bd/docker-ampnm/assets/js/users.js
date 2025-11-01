@@ -61,17 +61,24 @@ function initUsers() {
         try {
             const { all_maps, user_map_ids } = await api.get('get_user_map_permissions', { user_id: userId });
             
+            console.log('Fetched all_maps:', all_maps);
+            console.log('Fetched user_map_ids:', user_map_ids);
+
             if (all_maps.length === 0) {
                 mapPermissionsList.innerHTML = '<p class="text-sm text-slate-500">No maps available to assign.</p>';
                 return;
             }
 
-            mapPermissionsList.innerHTML = all_maps.map(map => `
-                <label class="flex items-center text-sm font-medium text-slate-400">
-                    <input type="checkbox" name="map_id[]" value="${map.id}" class="h-4 w-4 rounded border-slate-500 bg-slate-700 text-cyan-600 focus:ring-cyan-500" ${user_map_ids.includes(map.id.toString()) ? 'checked' : ''}>
-                    <span class="ml-2">${map.name}</span>
-                </label>
-            `).join('');
+            mapPermissionsList.innerHTML = all_maps.map(map => {
+                const isChecked = user_map_ids.includes(map.id.toString());
+                console.log(`Map ${map.name} (ID: ${map.id}), isChecked: ${isChecked}`);
+                return `
+                    <label class="flex items-center text-sm font-medium text-slate-400">
+                        <input type="checkbox" name="map_id[]" value="${map.id}" class="h-4 w-4 rounded border-slate-500 bg-slate-700 text-cyan-600 focus:ring-cyan-500" ${isChecked ? 'checked' : ''}>
+                        <span class="ml-2">${map.name}</span>
+                    </label>
+                `;
+            }).join('');
 
         } catch (error) {
             console.error('Failed to load map permissions:', error);
