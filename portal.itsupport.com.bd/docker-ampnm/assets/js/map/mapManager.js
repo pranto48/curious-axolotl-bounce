@@ -178,5 +178,55 @@ MapApp.mapManager = {
             console.error("Failed to copy device:", error);
             window.notyf.error("Could not copy the device.");
         }
-    }
+    },
+
+    importMapFromFile: async (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            try {
+                const rawMapData = JSON.parse(e.target.result);
+                if (!rawMapData.nodes || !rawMapData.edges) {
+                    throw new Error('Invalid map file format. Expected "nodes" and "edges" arrays.');
+                }
+
+                if (confirm('Are you sure you want to import this map? This will overwrite existing devices and connections on the current map.')) {
+                    // Extract actual device data from rawMapData.nodes
+                    const devicesToImport = rawMapData.nodes.map(node => ({
+                        ...node.deviceData, // Copy existing deviceData properties
+                        id: node.id, // Crucially, use the vis.js node ID for mapping in backend
+                        x: node.x,   // Ensure latest positions are used
+                        y: node.y    // Ensure latest positions are used
+                    }));
+
+                    // Extract relevant edge data
+                    const edgesToImport = rawMapData.edges.map(edge => ({
+                        from: edge.from,
+                        to: edge.to,
+                        connection_type: edge.connection_type || 'cat5'
+                    }));
+
+                    const result = await MapApp.api.post('import_map', { 
+                        map_id: MapApp.state.currentMapId, 
+                        devices: devicesToImport,
+                        edges: edgesToImport
+                    });
+                    if (result.success) {
+                        window.notyf.success(result.message);
+                        MapApp.mapManager.switchMap(MapApp.state.currentMapId); // Reload map
+                    } else {
+                        throw new Error(result.error);
+                    }
+                }
+            } catch (err) {
+                window.notyf.error('Failed to import map: ' + err.message);
+                console.error('Import error:', err);
+            } finally {
+                MapApp.ui.els.importFile.value = ''; // Clear file input
+            }
+        };
+        reader.readAsText(file);
+    },
 };
