@@ -55,6 +55,44 @@ function initMap() {
 
     // Event Listeners Setup
     if (IS_ADMIN) {
+        // Update openDeviceModal to only handle editing
+        MapApp.ui.openDeviceModal = (deviceId) => {
+            els.deviceForm.reset();
+            document.getElementById('deviceId').value = '';
+            const previewWrapper = document.getElementById('icon_preview_wrapper');
+            previewWrapper.classList.add('hidden');
+
+            if (deviceId) {
+                const node = MapApp.state.nodes.get(deviceId);
+                document.getElementById('modalTitle').textContent = 'Edit Item';
+                document.getElementById('deviceId').value = node.id;
+                document.getElementById('deviceName').value = node.deviceData.name;
+                document.getElementById('deviceIp').value = node.deviceData.ip;
+                document.getElementById('checkPort').value = node.deviceData.check_port;
+                document.getElementById('deviceType').value = node.deviceData.type;
+                document.getElementById('icon_url').value = node.deviceData.icon_url || '';
+                if (node.deviceData.icon_url) {
+                    document.getElementById('icon_preview').src = node.deviceData.icon_url;
+                    previewWrapper.classList.remove('hidden');
+                }
+                document.getElementById('pingInterval').value = node.deviceData.ping_interval;
+                document.getElementById('iconSize').value = node.deviceData.icon_size;
+                document.getElementById('nameTextSize').value = node.deviceData.name_text_size;
+                document.getElementById('warning_latency_threshold').value = node.deviceData.warning_latency_threshold;
+                document.getElementById('warning_packetloss_threshold').value = node.deviceData.warning_packetloss_threshold;
+                document.getElementById('critical_latency_threshold').value = node.deviceData.critical_latency_threshold;
+                document.getElementById('critical_packetloss_threshold').value = node.deviceData.critical_packetloss_threshold;
+                document.getElementById('showLivePing').checked = node.deviceData.show_live_ping;
+            } else {
+                // This branch should ideally not be hit anymore for new device creation
+                document.getElementById('modalTitle').textContent = 'Error: No device to edit';
+                window.notyf.error('Attempted to open edit modal without a device. This should not happen.');
+                return;
+            }
+            MapApp.ui.toggleDeviceModalFields(document.getElementById('deviceType').value);
+            MapApp.ui.els.deviceModal.classList.remove('hidden');
+        };
+
         els.deviceForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const formData = new FormData(els.deviceForm);
@@ -120,41 +158,9 @@ function initMap() {
                     }
                     window.notyf.success('Item updated.');
                 } else {
-                    const numericFields = ['ping_interval', 'icon_size', 'name_text_size', 'warning_latency_threshold', 'warning_packetloss_threshold', 'critical_latency_threshold', 'critical_packetloss_threshold'];
-                    for (const key in data) {
-                        if (numericFields.includes(key) && data[key] === '') data[key] = null;
-                    }
-                    if (data.ip === '') data.ip = null;
-                    
-                    // Get current map center for new device placement
-                    const viewPosition = state.network.getViewPosition();
-                    const canvasPosition = state.network.canvas.DOMtoCanvas(viewPosition);
-
-                    const newDevice = await api.post('create_device', { 
-                        ...data, 
-                        map_id: state.currentMapId,
-                        x: canvasPosition.x, // Add default X
-                        y: canvasPosition.y  // Add default Y
-                    });
-                    
-                    const baseNode = {
-                        id: newDevice.id, label: newDevice.name, title: MapApp.utils.buildNodeTitle(newDevice),
-                        x: newDevice.x, y: newDevice.y,
-                        font: { color: 'white', size: parseInt(newDevice.name_text_size) || 14, multi: true },
-                        deviceData: newDevice
-                    };
-
-                    let visNode;
-                    if (newDevice.icon_url) {
-                        visNode = { ...baseNode, shape: 'image', image: newDevice.icon_url, size: (parseInt(newDevice.icon_size) || 50) / 2, color: { border: MapApp.config.statusColorMap[newDevice.status] || MapApp.config.statusColorMap.unknown, background: 'transparent' }, borderWidth: 3 };
-                    } else if (newDevice.type === 'box') {
-                        visNode = { ...baseNode, shape: 'box', color: { background: 'rgba(49, 65, 85, 0.5)', border: '#475569' }, margin: 20, level: -1 };
-                    } else {
-                        visNode = { ...baseNode, shape: 'icon', icon: { face: "'Font Awesome 6 Free'", weight: "900", code: MapApp.config.iconMap[newDevice.type] || MapApp.config.iconMap.other, size: parseInt(newDevice.icon_size) || 50, color: MapApp.config.statusColorMap[newDevice.status] || MapApp.config.statusColorMap.unknown } };
-                    }
-
-                    state.nodes.add(visNode);
-                    window.notyf.success('Item created.');
+                    // This block is now effectively unreachable for new device creation
+                    window.notyf.error('Error: Attempted to create device from edit modal. This should not happen.');
+                    return;
                 }
                 closeModal('deviceModal');
             } catch (error) {
@@ -235,9 +241,11 @@ function initMap() {
             if (e.target.classList.contains('add-scanned-device-btn')) {
                 const { ip, name } = e.target.dataset;
                 closeModal('scanModal');
-                MapApp.ui.openDeviceModal(null, { ip, name });
-                e.target.textContent = 'Added';
-                e.target.disabled = true;
+                // Redirect to createdevice.php with prefill data
+                const params = new URLSearchParams();
+                if (ip) params.append('ip', ip);
+                if (name) params.append('name', name);
+                window.location.href = `createdevice.php?${params.toString()}`;
             }
         });
 
@@ -315,7 +323,7 @@ function initMap() {
                 window.notyf.success('Map deleted.');
             }
         });
-        els.addDeviceBtn.addEventListener('click', () => MapApp.ui.openDeviceModal());
+        // els.addDeviceBtn.addEventListener('click', () => MapApp.ui.openDeviceModal()); // Removed, now handled by <a> tag
         els.cancelBtn.addEventListener('click', () => closeModal('deviceModal'));
         els.addEdgeBtn.addEventListener('click', () => {
             state.network.addEdgeMode();
