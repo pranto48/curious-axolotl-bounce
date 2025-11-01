@@ -44,7 +44,7 @@ function initCreateDevice() {
     const populateMapSelector = async () => {
         try {
             const maps = await api.get('get_maps');
-            console.log('Maps fetched for selector:', maps); // Debug log
+            console.log('Maps fetched for selector in createdevice.js:', maps); // Debug log
             let defaultMapId = null;
             let optionsHtml = '<option value="">-- No Map --</option>';
 
