@@ -383,7 +383,7 @@ switch ($action) {
         $stats7d = $stmt->fetch(PDO::FETCH_ASSOC);
         $uptime7d = ($stats7d['total'] > 0) ? round(($stats7d['successful'] / $stats7d['total']) * 100, 2) : null;
 
-        echo json_encode(['uptime_24h' => $uptime24h, 'uptime_7d' => $uptime7d, 'outages_24h' => $outages24h]);
+        echo json_encode(['uptime_24h' => $uptime24h, 'uptime_7d' => $uptime7d, 'outages_24h' => $outages7d]);
         break;
 
     case 'get_device_details':
@@ -434,18 +434,44 @@ switch ($action) {
             WHERE 1=1
         ";
         $params = [];
-        // Basic users only see their own devices, admins see all
-        if (!$is_admin) {
-            $sql .= " AND d.user_id = ?";
-            $params[] = $current_user_id;
-        }
 
-        if ($map_id) { 
-            $sql .= " AND d.map_id = ?"; 
-            $params[] = $map_id; 
-        }
-        if ($unmapped) {
-            $sql .= " AND d.map_id IS NULL";
+        if (!$is_admin) {
+            // For basic users, apply complex permission logic
+            $sql .= " AND (";
+
+            $conditions = [];
+            $condition_params = [];
+
+            // Condition 1: Devices created by the current user
+            $conditions[] = "d.user_id = ?";
+            $condition_params[] = $current_user_id;
+
+            // Condition 2: Devices on maps the user has permission for
+            // This applies only if the device is actually assigned to a map
+            $conditions[] = "d.map_id IN (SELECT map_id FROM user_map_permissions WHERE user_id = ?)";
+            $condition_params[] = $current_user_id;
+
+            $sql .= implode(" OR ", $conditions) . ")";
+            $params = array_merge($params, $condition_params);
+
+            // If a specific map_id is requested, further restrict to that map
+            if ($map_id) {
+                $sql .= " AND d.map_id = ?";
+                $params[] = $map_id;
+            }
+            // If unmapped devices are specifically requested, override map_id logic
+            if ($unmapped) {
+                $sql .= " AND d.map_id IS NULL";
+            }
+        } else {
+            // For admins, simple filtering
+            if ($map_id) { 
+                $sql .= " AND d.map_id = ?"; 
+                $params[] = $map_id; 
+            }
+            if ($unmapped) {
+                $sql .= " AND d.map_id IS NULL";
+            }
         }
         $sql .= " ORDER BY d.created_at ASC";
         $stmt = $pdo->prepare($sql);
