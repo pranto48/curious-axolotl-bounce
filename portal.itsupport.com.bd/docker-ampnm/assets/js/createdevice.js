@@ -106,7 +106,13 @@ function initCreateDevice() {
                 iconUploadInput.value = ''; // Clear file input
                 // If an icon was uploaded, now update it
                 if (iconUploadInput.files.length > 0) {
-                    await uploadIcon(result.device.id, iconUploadInput.files[0]); // Use result.device.id
+                    const uploadResult = await uploadIcon(result.device.id, iconUploadInput.files[0]);
+                    if (!uploadResult.success) {
+                        // If icon upload failed, log it but don't prevent device creation success
+                        console.error("Icon upload failed after device creation:", uploadResult.error);
+                        // Optionally, show a specific error for icon upload, but keep device creation as success
+                        // window.notyf.error(`Device created, but icon upload failed: ${uploadResult.error}`);
+                    }
                 }
                 // Redirect to devices.php after successful creation
                 window.location.href = 'devices.php';
@@ -114,8 +120,8 @@ function initCreateDevice() {
                 window.notyf.error(`Error: ${result.error}`);
             }
         } catch (error) {
+            console.error("Error caught during device creation process:", error); // Keep this log
             window.notyf.error('An unexpected error occurred while creating the device.');
-            console.error(error);
         } finally {
             saveDeviceBtn.disabled = false;
             saveDeviceBtn.innerHTML = '<i class="fas fa-plus mr-2"></i>Create Device';
@@ -163,12 +169,15 @@ function initCreateDevice() {
                 window.notyf.success('Device icon uploaded successfully.');
                 iconUrlInput.value = result.url; // Update URL field with new URL
                 iconPreview.src = result.url;
+                return { success: true, url: result.url };
             } else {
                 window.notyf.error(`Error uploading icon: ${result.error}`);
+                return { success: false, error: result.error };
             }
         } catch (error) {
             window.notyf.error('An unexpected error occurred during icon upload.');
             console.error('Icon upload error:', error);
+            return { success: false, error: error.message };
         } finally {
             iconUploadLoader.classList.add('hidden');
         }
