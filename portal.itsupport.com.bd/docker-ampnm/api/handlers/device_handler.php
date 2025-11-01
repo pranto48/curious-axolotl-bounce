@@ -445,7 +445,7 @@ switch ($action) {
             $stmt = $pdo->prepare("SELECT * FROM devices WHERE id = ? AND user_id = ?");
             $stmt->execute([$lastId, $current_user_id]);
             $device = $stmt->fetch(PDO::FETCH_ASSOC);
-            echo json_encode($device);
+            echo json_encode(['success' => true, 'device' => $device]);
         }
         break;
 

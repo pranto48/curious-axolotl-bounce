@@ -44,6 +44,7 @@ function initCreateDevice() {
     const populateMapSelector = async () => {
         try {
             const maps = await api.get('get_maps');
+            console.log('Maps fetched for selector:', maps); // Debug log
             let defaultMapId = null;
             let optionsHtml = '<option value="">-- No Map --</option>';
 
@@ -52,6 +53,7 @@ function initCreateDevice() {
                     optionsHtml += `<option value="${map.id}">${map.name}</option>`;
                     if (map.is_default == 1) {
                         defaultMapId = map.id;
+                        console.log('Found default map:', map); // Debug log
                     }
                 });
             }
@@ -95,7 +97,7 @@ function initCreateDevice() {
 
         try {
             const result = await api.post('create_device', data);
-            if (result.success) {
+            if (result.success) { // Now this check will work
                 window.notyf.success('Device created successfully!');
                 createDeviceForm.reset();
                 toggleFields(deviceTypeSelect.value); // Reset fields visibility
@@ -103,7 +105,7 @@ function initCreateDevice() {
                 iconUploadInput.value = ''; // Clear file input
                 // If an icon was uploaded, now update it
                 if (iconUploadInput.files.length > 0) {
-                    await uploadIcon(result.id, iconUploadInput.files[0]);
+                    await uploadIcon(result.device.id, iconUploadInput.files[0]); // Use result.device.id
                 }
             } else {
                 window.notyf.error(`Error: ${result.error}`);
