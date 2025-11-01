@@ -170,7 +170,7 @@ function is_active($link, $current_page) {
         </div>
 
         <!-- Mobile Menu (Hidden by default) -->
-        <div id="mobile-menu" class="md:hidden hidden fixed inset-0 bg-slate-900 bg-opacity-95 z-40 overflow-y-auto">
+        <div id="mobile-menu" class="md:hidden hidden fixed inset-0 bg-slate-900 bg-opacity-95 z-[60] overflow-y-auto">
             <div class="flex justify-end p-4">
                 <button id="close-mobile-menu-button" class="text-slate-300 hover:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 p-2 rounded-md">
                     <i class="fas fa-times text-xl"></i>
