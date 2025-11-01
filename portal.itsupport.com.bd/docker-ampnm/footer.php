@@ -24,7 +24,7 @@
     <script src="assets/js/users.js"></script>
     <script src="assets/js/status_logs.js"></script>
     <script src="assets/js/email_notifications.js"></script>
-    <script src="assets/js/createdevice.js"></script>
+    <!-- Removed createdevice.js -->
     <script src="assets/js/profile.js"></script> <!-- New script for profile page -->
     
     <script>
@@ -69,8 +69,6 @@
             initStatusLogs();
         } else if (page === 'email_notifications.php') {
             initEmailNotifications();
-        } else if (page === 'createdevice.php') {
-            initCreateDevice();
         } else if (page === 'profile.php') { // Initialize new profile script
             initProfile();
         }

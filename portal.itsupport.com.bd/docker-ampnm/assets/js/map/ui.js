@@ -36,7 +36,20 @@ MapApp.ui = {
             scanForm: document.getElementById('scanForm'),
             scanLoader: document.getElementById('scanLoader'),
             scanResults: document.getElementById('scanResults'),
-            scanInitialMessage: document.getElementById('scanInitialMessage')
+            scanInitialMessage: document.getElementById('scanInitialMessage'),
+            placeDeviceBtn: document.getElementById('placeDeviceBtn'), // NEW
+            placeDeviceModal: document.getElementById('placeDeviceModal'), // NEW
+            closePlaceDeviceModal: document.getElementById('closePlaceDeviceModal'), // NEW
+            placeDeviceList: document.getElementById('placeDeviceList'), // NEW
+            placeDeviceLoader: document.getElementById('placeDeviceLoader'), // NEW
+            mapPermissionsBtn: document.getElementById('mapPermissionsBtn'), // NEW
+            mapPermissionsModal: document.getElementById('mapPermissionsModal'), // NEW
+            mapPermissionsForm: document.getElementById('mapPermissionsForm'), // NEW
+            permissionsMapName: document.getElementById('permissionsMapName'), // NEW
+            permissionsMapId: document.getElementById('permissionsMapId'), // NEW
+            userPermissionsList: document.getElementById('userPermissionsList'), // NEW
+            cancelMapPermissionsBtn: document.getElementById('cancelMapPermissionsBtn'), // NEW
+            saveMapPermissionsBtn: document.getElementById('saveMapPermissionsBtn'), // NEW
         };
     },
 
@@ -63,7 +76,7 @@ MapApp.ui = {
         document.getElementById('nameTextSizeLabel').textContent = isAnnotation ? 'Height' : 'Name Text Size';
     },
 
-    openDeviceModal: (deviceId = null) => { // Removed prefill parameter
+    openDeviceModal: (deviceId = null, prefill = {}) => {
         MapApp.ui.els.deviceForm.reset();
         document.getElementById('deviceId').value = '';
         const previewWrapper = document.getElementById('icon_preview_wrapper');
@@ -93,7 +106,8 @@ MapApp.ui = {
             document.getElementById('showLivePing').checked = node.deviceData.show_live_ping;
         } else {
             document.getElementById('modalTitle').textContent = 'Add Item';
-            // Removed prefill assignments
+            document.getElementById('deviceName').value = prefill.name || '';
+            document.getElementById('deviceIp').value = prefill.ip || '';
             // Set default values for new devices
             document.getElementById('deviceType').value = 'server';
             document.getElementById('iconSize').value = 50;

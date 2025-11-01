@@ -25,7 +25,11 @@ function initMap() {
     els.cancelMapSettingsBtn = document.getElementById('cancelMapSettingsBtn');
     els.resetMapBgBtn = document.getElementById('resetMapBgBtn');
     els.mapBgUpload = document.getElementById('mapBgUpload');
-    // Removed els.placeDeviceBtn, els.placeDeviceModal, els.closePlaceDeviceModal, els.placeDeviceList, els.placeDeviceLoader
+    els.placeDeviceBtn = document.getElementById('placeDeviceBtn');
+    els.placeDeviceModal = document.getElementById('placeDeviceModal');
+    els.closePlaceDeviceModal = document.getElementById('closePlaceDeviceModal');
+    els.placeDeviceList = document.getElementById('placeDeviceList');
+    els.placeDeviceLoader = document.getElementById('placeDeviceLoader');
     els.mapPermissionsBtn = document.getElementById('mapPermissionsBtn'); // New element
     els.mapPermissionsModal = document.getElementById('mapPermissionsModal'); // New element
     els.mapPermissionsForm = document.getElementById('mapPermissionsForm'); // New element
@@ -135,10 +139,133 @@ function initMap() {
             }
         });
 
-        // Removed els.addDeviceBtn.addEventListener
-        // Removed els.placeDeviceBtn.addEventListener
-        // Removed els.closePlaceDeviceModal.addEventListener
-        // Removed populatePlaceDeviceList function
+        // Add Device Button (opens modal for new device)
+        els.addDeviceBtn.addEventListener('click', () => {
+            if (!state.currentMapId) {
+                window.notyf.error('Please select a map first to add a device.');
+                return;
+            }
+            MapApp.ui.openDeviceModal(null, { map_id: state.currentMapId }); // Pass current map ID
+        });
+
+        // Place Existing Device Button
+        els.placeDeviceBtn.addEventListener('click', async () => {
+            if (!state.currentMapId) {
+                window.notyf.error('Please select a map first to place a device.');
+                return;
+            }
+            openModal('placeDeviceModal');
+            await populatePlaceDeviceList();
+        });
+
+        els.closePlaceDeviceModal.addEventListener('click', () => closeModal('placeDeviceModal'));
+
+        const populatePlaceDeviceList = async () => {
+            els.placeDeviceLoader.classList.remove('hidden');
+            els.placeDeviceList.innerHTML = '';
+            try {
+                const unmappedDevices = await api.get('get_unmapped_devices');
+                if (unmappedDevices.length === 0) {
+                    els.placeDeviceList.innerHTML = '<p class="text-slate-500 text-center py-4">No unmapped devices found in your inventory.</p>';
+                } else {
+                    els.placeDeviceList.innerHTML = unmappedDevices.map(device => `
+                        <div class="flex items-center justify-between p-3 border-b border-slate-700 last:border-b-0 hover:bg-slate-700/50 cursor-pointer" data-device-id="${device.id}" data-device-name="${device.name}" data-device-ip="${device.ip || ''}">
+                            <div>
+                                <div class="font-medium text-white">${device.name}</div>
+                                <div class="text-sm text-slate-400">${device.ip || 'No IP'}</div>
+                            </div>
+                            <button class="place-device-action-btn px-3 py-1 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700" data-device-id="${device.id}">Place</button>
+                        </div>
+                    `).join('');
+
+                    els.placeDeviceList.querySelectorAll('.place-device-action-btn').forEach(button => {
+                        button.addEventListener('click', async (e) => {
+                            const deviceId = e.target.dataset.deviceId;
+                            const deviceName = e.target.closest('[data-device-id]').dataset.deviceName;
+                            const defaultX = Math.floor(Math.random() * 500) + 50; // Random position
+                            const defaultY = Math.floor(Math.random() * 300) + 50;
+
+                            try {
+                                await api.post('update_device', { 
+                                    id: deviceId, 
+                                    updates: { map_id: state.currentMapId, x: defaultX, y: defaultY } 
+                                });
+                                window.notyf.success(`Device '${deviceName}' placed on the map.`);
+                                closeModal('placeDeviceModal');
+                                mapManager.switchMap(state.currentMapId); // Refresh map
+                            } catch (error) {
+                                window.notyf.error(`Failed to place device '${deviceName}'.`);
+                                console.error('Error placing device:', error);
+                            }
+                        });
+                    });
+                }
+            } catch (error) {
+                window.notyf.error('Failed to load unmapped devices.');
+                console.error('Error loading unmapped devices:', error);
+            } finally {
+                els.placeDeviceLoader.classList.add('hidden');
+            }
+        };
+
+        // Device Form Submission (for both new and existing devices)
+        els.deviceForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(els.deviceForm);
+            const data = Object.fromEntries(formData.entries());
+            data.show_live_ping = document.getElementById('showLivePing').checked;
+            const id = data.id;
+            delete data.id; // Remove ID from data for updates, it's in the URL param
+
+            // Convert empty strings to null for optional numeric fields
+            const numericFields = ['ping_interval', 'icon_size', 'name_text_size', 'warning_latency_threshold', 'warning_packetloss_threshold', 'critical_latency_threshold', 'critical_packetloss_threshold'];
+            for (const key in data) {
+                if (numericFields.includes(key) && data[key] === '') {
+                    data[key] = null;
+                } else if (key === 'ip' && data[key] === '') {
+                    data[key] = null;
+                } else if (key === 'check_port' && data[key] === '') {
+                    data[key] = null;
+                } else if (key === 'icon_url' && data[key] === '') {
+                    data[key] = null;
+                } else if (key === 'map_id' && data[key] === '') {
+                    data[key] = null;
+                }
+            }
+
+            // Add current map_id and default coordinates for new devices
+            if (!id && state.currentMapId) {
+                data.map_id = state.currentMapId;
+                data.x = Math.floor(Math.random() * 500) + 50; // Default X
+                data.y = Math.floor(Math.random() * 300) + 50; // Default Y
+            }
+
+            els.saveBtn.disabled = true;
+            els.saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Saving...';
+
+            try {
+                let result;
+                if (id) {
+                    result = await api.post('update_device', { id, updates: data });
+                    window.notyf.success('Device updated.');
+                } else {
+                    result = await api.post('create_device', data);
+                    window.notyf.success('Device created successfully!');
+                }
+                
+                closeModal('deviceModal');
+                mapManager.switchMap(state.currentMapId); // Refresh map to show changes
+            } catch (error) {
+                window.notyf.error('Failed to save device.');
+                console.error(error);
+            } finally {
+                els.saveBtn.disabled = false;
+                els.saveBtn.innerHTML = 'Save';
+            }
+        });
+
+        els.cancelBtn.addEventListener('click', () => closeModal('deviceModal'));
+
     } else {
         // Non-admin user: Disable all modification features
         
