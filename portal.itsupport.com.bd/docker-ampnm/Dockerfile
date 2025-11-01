@@ -13,16 +13,18 @@ RUN apt-get update && apt-get install -y \
     libxml2-dev \
     nmap \
     curl \
-    mariadb-client-compat \
-    # Install Composer dependencies
-    && apt-get install -y \
-    zip \
+    libmariadb-dev \
+    libwebp-dev \
+    # Install Composer dependencies (zip is already handled by libzip-dev)
     # Clean up
     && rm -rf /var/lib/apt/lists/*
 
+# Configure PHP extensions
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
+    && docker-php-ext-configure pdo_mysql --with-pdo-mysql=mysqlnd
+
 # Install PHP extensions
-RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install -j$(nproc) gd pdo_mysql zip intl opcache bcmath exif curl
+RUN docker-php-ext-install -j$(nproc) gd pdo_mysql zip intl opcache bcmath exif curl
 
 # Enable Apache modules
 RUN a2enmod rewrite
