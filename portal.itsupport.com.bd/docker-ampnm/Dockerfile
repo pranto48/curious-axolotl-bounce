@@ -54,7 +54,8 @@ EXPOSE 2266
 # Replace 'Listen 80' with 'Listen 2266' in ports.conf
 RUN sed -i 's/Listen 80/Listen 2266/' /etc/apache2/ports.conf \
     && sed -i -e 's/VirtualHost \*:80/VirtualHost \*:2266/g' /etc/apache2/sites-available/000-default.conf \
-    && sed -i -e 's/VirtualHost \*:80/VirtualHost \*:2266/g' /etc/apache2/sites-enabled/000-default.conf
+    && sed -i -e 's/VirtualHost \*:80/VirtualHost \*:2266/g' /etc/apache2/sites-enabled/000-default.conf \
+    && echo "ServerName localhost" >> /etc/apache2/apache2.conf
 
 # Ensure the uploads directory exists and has correct permissions
 RUN mkdir -p /var/www/html/uploads/icons \
