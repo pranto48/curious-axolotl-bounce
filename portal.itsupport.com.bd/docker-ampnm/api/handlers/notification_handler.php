@@ -3,7 +3,7 @@
 $current_user_id = $_SESSION['user_id'];
 
 // Enforce admin-only access for all notification management actions
-$notificationModificationActions = ['get_smtp_settings', 'save_smtp_settings', 'get_device_subscriptions', 'save_device_subscription', 'delete_device_subscription', 'get_all_devices_for_subscriptions'];
+$notificationModificationActions = ['get_smtp_settings', 'save_smtp_settings', 'get_device_subscriptions', 'save_device_subscription', 'delete_device_subscription', 'get_all_devices_for_subscriptions', 'get_all_device_subscriptions'];
 
 if (in_array($action, $notificationModificationActions) && ($_SESSION['role'] !== 'admin')) {
     http_response_code(403);
@@ -78,6 +78,46 @@ switch ($action) {
         }
         $stmt = $pdo->prepare("SELECT id, recipient_email, notify_on_online, notify_on_offline, notify_on_warning, notify_on_critical FROM device_email_subscriptions WHERE user_id = ? AND device_id = ? ORDER BY recipient_email ASC");
         $stmt->execute([$current_user_id, $device_id]);
+        $subscriptions = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        echo json_encode($subscriptions);
+        break;
+
+    case 'get_all_device_subscriptions': // NEW ACTION
+        $search_term = $_GET['search'] ?? '';
+        $sql = "
+            SELECT 
+                des.id, 
+                des.recipient_email, 
+                des.notify_on_online, 
+                des.notify_on_offline, 
+                des.notify_on_warning, 
+                des.notify_on_critical,
+                d.id as device_id,
+                d.name as device_name,
+                d.ip as device_ip,
+                m.name as map_name
+            FROM 
+                device_email_subscriptions des
+            JOIN 
+                devices d ON des.device_id = d.id
+            LEFT JOIN
+                maps m ON d.map_id = m.id
+            WHERE 
+                des.user_id = ?
+        ";
+        $params = [$current_user_id];
+
+        if (!empty($search_term)) {
+            $sql .= " AND (des.recipient_email LIKE ? OR d.name LIKE ? OR d.ip LIKE ? OR m.name LIKE ?)";
+            $params[] = "%{$search_term}%";
+            $params[] = "%{$search_term}%";
+            $params[] = "%{$search_term}%";
+            $params[] = "%{$search_term}%";
+        }
+        $sql .= " ORDER BY d.name ASC, des.recipient_email ASC";
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
         $subscriptions = $stmt->fetchAll(PDO::FETCH_ASSOC);
         echo json_encode($subscriptions);
         break;

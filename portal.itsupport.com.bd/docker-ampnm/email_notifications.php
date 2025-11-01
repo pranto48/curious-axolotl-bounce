@@ -56,54 +56,23 @@ include 'header.php';
 
         <!-- Device Subscriptions Card -->
         <div class="bg-slate-800 border border-slate-700 rounded-lg shadow-xl p-6">
-            <h2 class="text-xl font-semibold text-white mb-4">Device Email Subscriptions</h2>
-            <div class="mb-4">
-                <label for="deviceSelect" class="block text-sm font-medium text-slate-400 mb-1">Select Device</label>
-                <select id="deviceSelect" class="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2 focus:ring-2 focus:ring-cyan-500">
-                    <option value="">-- Select a device --</option>
-                </select>
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-semibold text-white">Device Email Subscriptions</h2>
+                <button id="addSubscriptionBtn" class="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700">
+                    <i class="fas fa-plus mr-2"></i>Add Subscription
+                </button>
             </div>
-
-            <div id="subscriptionFormContainer" class="hidden border border-slate-700 rounded-lg p-4 mt-4">
-                <h3 class="text-lg font-semibold text-white mb-3">Add/Edit Subscription for <span id="selectedDeviceName" class="text-cyan-400"></span></h3>
-                <form id="deviceSubscriptionForm" class="space-y-3">
-                    <input type="hidden" id="subscriptionId" name="id">
-                    <input type="hidden" id="subscriptionDeviceId" name="device_id">
-                    <div>
-                        <label for="recipientEmail" class="block text-sm font-medium text-slate-400 mb-1">Recipient Email</label>
-                        <input type="email" id="recipientEmail" name="recipient_email" required class="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2 focus:ring-2 focus:ring-cyan-500">
-                    </div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <label class="flex items-center text-sm font-medium text-slate-400">
-                            <input type="checkbox" id="notifyOnline" name="notify_on_online" class="h-4 w-4 rounded border-slate-500 bg-slate-700 text-cyan-600 focus:ring-cyan-500">
-                            <span class="ml-2">Notify on Online</span>
-                        </label>
-                        <label class="flex items-center text-sm font-medium text-slate-400">
-                            <input type="checkbox" id="notifyOffline" name="notify_on_offline" class="h-4 w-4 rounded border-slate-500 bg-slate-700 text-cyan-600 focus:ring-cyan-500">
-                            <span class="ml-2">Notify on Offline</span>
-                        </label>
-                        <label class="flex items-center text-sm font-medium text-slate-400">
-                            <input type="checkbox" id="notifyWarning" name="notify_on_warning" class="h-4 w-4 rounded border-slate-500 bg-slate-700 text-cyan-600 focus:ring-cyan-500">
-                            <span class="ml-2">Notify on Warning</span>
-                        </label>
-                        <label class="flex items-center text-sm font-medium text-slate-400">
-                            <input type="checkbox" id="notifyCritical" name="notify_on_critical" class="h-4 w-4 rounded border-slate-500 bg-slate-700 text-cyan-600 focus:ring-cyan-500">
-                            <span class="ml-2">Notify on Critical</span>
-                        </label>
-                    </div>
-                    <div class="flex justify-end gap-2">
-                        <button type="button" id="cancelSubscriptionBtn" class="px-4 py-2 bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600">Cancel</button>
-                        <button type="submit" id="saveSubscriptionBtn" class="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700">Save Subscription</button>
-                    </div>
-                </form>
+            <div class="mb-4">
+                <input type="search" id="subscriptionSearchInput" placeholder="Search by device, map, or recipient..." class="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2 focus:ring-2 focus:ring-cyan-500">
             </div>
 
             <div id="subscriptionsList" class="mt-6">
-                <h3 class="text-lg font-semibold text-white mb-3">Active Subscriptions</h3>
                 <div id="subscriptionsTableBody" class="overflow-x-auto">
                     <table class="min-w-full">
                         <thead class="border-b border-slate-700">
                             <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Device</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Map</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Recipient</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Triggers</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Actions</th>
@@ -114,12 +83,57 @@ include 'header.php';
                         </tbody>
                     </table>
                 </div>
-                <div id="subscriptionsLoader" class="text-center py-8 hidden"><div class="loader mx-auto"></div></div>
+                <div id="subscriptionsLoader" class="text-center py-8"><div class="loader mx-auto"></div></div>
                 <div id="noSubscriptionsMessage" class="text-center py-8 hidden">
                     <i class="fas fa-bell-slash text-slate-600 text-4xl mb-4"></i>
-                    <p class="text-slate-500">No subscriptions for this device yet.</p>
+                    <p class="text-slate-500">No subscriptions found.</p>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Subscription Editor Modal -->
+    <div id="subscriptionEditorModal" class="modal-backdrop hidden">
+        <div class="modal-panel bg-slate-800 rounded-lg shadow-xl p-6 w-full max-w-md max-h-[90vh] flex flex-col">
+            <h2 id="subscriptionEditorModalTitle" class="text-xl font-semibold text-white mb-4 flex-shrink-0">Add/Edit Subscription</h2>
+            <form id="subscriptionEditorForm" class="flex flex-col flex-grow min-h-0">
+                <input type="hidden" id="editorSubscriptionId" name="id">
+                <div class="flex-grow overflow-y-auto space-y-4 p-1 -m-1">
+                    <div>
+                        <label for="editorDeviceSelect" class="block text-sm font-medium text-slate-400 mb-1">Select Device</label>
+                        <select id="editorDeviceSelect" name="device_id" class="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2 focus:ring-2 focus:ring-cyan-500" required>
+                            <option value="">-- Select a device --</option>
+                            <!-- Devices will be populated by JS -->
+                        </select>
+                    </div>
+                    <div>
+                        <label for="editorRecipientEmail" class="block text-sm font-medium text-slate-400 mb-1">Recipient Email</label>
+                        <input type="email" id="editorRecipientEmail" name="recipient_email" required class="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2 focus:ring-2 focus:ring-cyan-500">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <label class="flex items-center text-sm font-medium text-slate-400">
+                            <input type="checkbox" id="editorNotifyOnline" name="notify_on_online" class="h-4 w-4 rounded border-slate-500 bg-slate-700 text-cyan-600 focus:ring-cyan-500">
+                            <span class="ml-2">Notify on Online</span>
+                        </label>
+                        <label class="flex items-center text-sm font-medium text-slate-400">
+                            <input type="checkbox" id="editorNotifyOffline" name="notify_on_offline" class="h-4 w-4 rounded border-slate-500 bg-slate-700 text-cyan-600 focus:ring-cyan-500">
+                            <span class="ml-2">Notify on Offline</span>
+                        </label>
+                        <label class="flex items-center text-sm font-medium text-slate-400">
+                            <input type="checkbox" id="editorNotifyWarning" name="notify_on_warning" class="h-4 w-4 rounded border-slate-500 bg-slate-700 text-cyan-600 focus:ring-cyan-500">
+                            <span class="ml-2">Notify on Warning</span>
+                        </label>
+                        <label class="flex items-center text-sm font-medium text-slate-400">
+                            <input type="checkbox" id="editorNotifyCritical" name="notify_on_critical" class="h-4 w-4 rounded border-slate-500 bg-slate-700 text-cyan-600 focus:ring-cyan-500">
+                            <span class="ml-2">Notify on Critical</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-4 mt-6 flex-shrink-0">
+                    <button type="button" id="cancelEditorBtn" class="px-4 py-2 bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600">Cancel</button>
+                    <button type="submit" id="saveEditorBtn" class="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700">Save Subscription</button>
+                </div>
+            </form>
         </div>
     </div>
 </main>
