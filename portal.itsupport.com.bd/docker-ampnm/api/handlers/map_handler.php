@@ -74,14 +74,14 @@ switch ($action) {
             foreach ($updates as $key => $value) {
                 if (in_array($key, $allowed_fields)) {
                     $fields[] = "$key = ?";
-                    $params[] = ($value === '') ? null : $value;
+                    $params[] = ($value === '' || is_null($value)) ? null : $value; // Handle null for empty strings
                 }
             }
 
             if (empty($fields)) { http_response_code(400); echo json_encode(['error' => 'No valid fields to update']); exit; }
             
             $params[] = $id; // No user_id check here, as admin can update any map
-            $sql = "UPDATE maps SET " . implode(', ', $fields) . " WHERE id = ?";
+            $sql = "UPDATE maps SET " . implode(', ', $fields) . ", updated_at = CURRENT_TIMESTAMP WHERE id = ?";
             $stmt = $pdo->prepare($sql); $stmt->execute($params);
             
             echo json_encode(['success' => true, 'message' => 'Map updated successfully.']);

@@ -194,6 +194,160 @@ function initMap() {
 
     // Event Listeners Setup
     if (IS_ADMIN) {
+        // Rename Map
+        els.renameMapBtn.addEventListener('click', async () => {
+            if (!state.currentMapId) {
+                window.notyf.error('Please select a map to rename.');
+                return;
+            }
+            const currentMap = state.maps.find(m => m.id == state.currentMapId);
+            const newName = prompt(`Rename map "${currentMap.name}":`, currentMap.name);
+            if (newName && newName.trim() !== currentMap.name) {
+                try {
+                    const result = await api.post('update_map', { id: state.currentMapId, updates: { name: newName.trim() } });
+                    if (result.success) {
+                        window.notyf.success(`Map renamed to "${newName.trim()}".`);
+                        await mapManager.loadMaps(); // Reload maps to update selector
+                        els.mapSelector.value = state.currentMapId; // Keep current map selected
+                        els.currentMapName.textContent = newName.trim(); // Update current map name display
+                    } else {
+                        window.notyf.error(result.error || 'Failed to rename map.');
+                    }
+                } catch (error) {
+                    console.error('Error renaming map:', error);
+                    window.notyf.error('An unexpected error occurred while renaming the map.');
+                }
+            } else if (newName === null) {
+                window.notyf.info('Map rename cancelled.');
+            }
+        });
+
+        // Delete Map
+        els.deleteMapBtn.addEventListener('click', async () => {
+            if (!state.currentMapId) {
+                window.notyf.error('Please select a map to delete.');
+                return;
+            }
+            const currentMap = state.maps.find(m => m.id == state.currentMapId);
+            if (confirm(`Are you sure you want to delete the map "${currentMap.name}"? This action cannot be undone and will delete all devices and connections on this map.`)) {
+                try {
+                    const result = await api.post('delete_map', { id: state.currentMapId });
+                    if (result.success) {
+                        window.notyf.success(`Map "${currentMap.name}" deleted.`);
+                        const newFirstMapId = await mapManager.loadMaps(); // Reload maps and get new first map
+                        await mapManager.switchMap(newFirstMapId); // Switch to new first map or show no maps
+                    } else {
+                        window.notyf.error(result.error || 'Failed to delete map.');
+                    }
+                } catch (error) {
+                    console.error('Error deleting map:', error);
+                    window.notyf.error('An unexpected error occurred while deleting the map.');
+                }
+            }
+        });
+
+        // Scan Network Button
+        els.scanNetworkBtn.addEventListener('click', () => {
+            if (!state.currentMapId) {
+                window.notyf.error('Please select a map first to scan the network.');
+                return;
+            }
+            openModal('scanModal');
+            els.scanResults.innerHTML = ''; // Clear previous results
+            els.scanInitialMessage.classList.remove('hidden');
+            els.scanLoader.classList.add('hidden');
+        });
+
+        els.closeScanModal.addEventListener('click', () => closeModal('scanModal'));
+
+        els.scanForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const subnet = els.subnetInput.value.trim();
+            if (!subnet) {
+                window.notyf.error('Please enter a subnet to scan.');
+                return;
+            }
+
+            els.startScanBtn.disabled = true;
+            els.startScanBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Scanning...';
+            els.scanInitialMessage.classList.add('hidden');
+            els.scanResults.innerHTML = '';
+            els.scanLoader.classList.remove('hidden');
+
+            try {
+                const result = await api.post('scan_network', { subnet });
+                if (result.devices && result.devices.length > 0) {
+                    els.scanResults.innerHTML = result.devices.map(device => `
+                        <div class="flex items-center justify-between p-3 border-b border-slate-700 last:border-b-0 hover:bg-slate-700/50">
+                            <div>
+                                <div class="font-medium text-white">${device.hostname || 'Unknown Host'}</div>
+                                <div class="text-sm text-slate-400 font-mono">${device.ip}</div>
+                            </div>
+                            <button class="place-scanned-device-btn px-3 py-1 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700" 
+                                data-ip="${device.ip}" data-hostname="${device.hostname || 'Discovered Device'}">
+                                Place on Map
+                            </button>
+                        </div>
+                    `).join('');
+                    window.notyf.success(`Found ${result.devices.length} devices.`);
+                } else {
+                    els.scanResults.innerHTML = '<p class="text-slate-500 text-center py-4">No devices found on the specified subnet.</p>';
+                    window.notyf.info('No devices found.');
+                }
+            } catch (error) {
+                console.error('Network scan failed:', error);
+                els.scanResults.innerHTML = `<p class="text-red-400 text-center py-4">Scan failed: ${error.message || 'An unexpected error occurred.'}</p>`;
+                window.notyf.error('Network scan failed.');
+            } finally {
+                els.scanLoader.classList.add('hidden');
+                els.startScanBtn.disabled = false;
+                els.startScanBtn.innerHTML = '<i class="fas fa-search mr-2"></i>Start Scan';
+            }
+        });
+
+        // Event listener for placing scanned devices
+        els.scanResults.addEventListener('click', async (e) => {
+            const button = e.target.closest('.place-scanned-device-btn');
+            if (!button) return;
+
+            const ip = button.dataset.ip;
+            const name = button.dataset.hostname;
+            const defaultX = Math.floor(Math.random() * 500) - 250; // Random position around center
+            const defaultY = Math.floor(Math.random() * 300) - 150;
+
+            button.disabled = true;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Placing...';
+
+            try {
+                const newDevice = {
+                    name: name,
+                    ip: ip,
+                    type: 'server', // Default type for scanned devices
+                    map_id: state.currentMapId,
+                    x: defaultX,
+                    y: defaultY,
+                    status: 'unknown',
+                    icon_size: 50,
+                    name_text_size: 14,
+                    show_live_ping: false
+                };
+                const result = await api.post('create_device', newDevice);
+                if (result.id) {
+                    window.notyf.success(`Device '${name}' (${ip}) placed on map.`);
+                    mapManager.switchMap(state.currentMapId); // Refresh map
+                    button.closest('div').remove(); // Remove from scan results list
+                } else {
+                    throw new Error(result.error || 'Failed to create device on map.');
+                }
+            } catch (error) {
+                window.notyf.error(`Failed to place device '${name}': ${error.message}`);
+                console.error('Error placing scanned device:', error);
+                button.disabled = false;
+                button.innerHTML = 'Place on Map';
+            }
+        });
+
+
         if (els.mapPermissionsBtn) { // Ensure button exists before adding listener
             els.mapPermissionsBtn.addEventListener('click', async () => {
                 if (!state.currentMapId) {
