@@ -194,6 +194,15 @@ function initMap() {
 
     // Event Listeners Setup
     if (IS_ADMIN) {
+        // Debugging: Check if newMapBtn exists before adding listener
+        console.log('newMapBtn element:', els.newMapBtn);
+        if (els.newMapBtn) {
+            els.newMapBtn.addEventListener('click', MapApp.mapManager.createMap);
+            console.log('Event listener attached to newMapBtn.');
+        } else {
+            console.error('newMapBtn element not found. Cannot attach event listener.');
+        }
+
         // Rename Map
         els.renameMapBtn.addEventListener('click', async () => {
             if (!state.currentMapId) {
