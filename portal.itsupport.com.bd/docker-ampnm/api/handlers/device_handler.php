@@ -7,12 +7,11 @@ $is_admin = $_SESSION['role'] === 'admin';
 $adminOnlyActions = [
     'import_devices', 'create_device', 'update_device', 'delete_device', 
     'upload_device_icon', 'check_all_devices_globally', 'ping_all_devices', 
-    'check_device' // <-- Restrict single device check to admin
 ];
 
 if (in_array($action, $adminOnlyActions) && !$is_admin) {
     http_response_code(403);
-    echo json_encode(['error' => 'Forbidden: Only admin users can modify devices or trigger checks.']);
+    echo json_encode(['error' => 'Forbidden: Only admin users can modify devices or trigger global checks.']);
     exit;
 }
 
@@ -102,6 +101,23 @@ function logStatusChange($pdo, $deviceId, $oldStatus, $newStatus, $details) {
         $stmt->execute([$deviceId, $newStatus, $details]);
     }
 }
+
+// Helper function to build permission conditions for basic users
+function buildDevicePermissionConditions($current_user_id, $device_alias = 'd') {
+    $conditions = [];
+    $params = [];
+
+    // Condition 1: Devices created by the current user
+    $conditions[] = "{$device_alias}.user_id = ?";
+    $params[] = $current_user_id;
+
+    // Condition 2: Devices on maps the user has permission for
+    $conditions[] = "{$device_alias}.map_id IN (SELECT map_id FROM user_map_permissions WHERE user_id = ?)";
+    $params[] = $current_user_id;
+
+    return ['sql' => implode(" OR ", $conditions), 'params' => $params];
+}
+
 
 switch ($action) {
     case 'import_devices':
@@ -301,12 +317,12 @@ switch ($action) {
             $deviceId = $input['id'] ?? 0;
             if (!$deviceId) { http_response_code(400); echo json_encode(['error' => 'Device ID is required']); exit; }
             
-            // Admins can check any device, basic users only their own
             $sql = "SELECT * FROM devices WHERE id = ?";
             $params = [$deviceId];
             if (!$is_admin) {
-                $sql .= " AND user_id = ?";
-                $params[] = $current_user_id;
+                $permission_conditions = buildDevicePermissionConditions($current_user_id);
+                $sql .= " AND ({$permission_conditions['sql']})";
+                $params = array_merge($params, $permission_conditions['params']);
             }
             $stmt = $pdo->prepare($sql);
             $stmt->execute($params);
@@ -355,12 +371,12 @@ switch ($action) {
         $deviceId = $_GET['id'] ?? 0;
         if (!$deviceId) { http_response_code(400); echo json_encode(['error' => 'Device ID is required']); exit; }
         
-        // Admins can view uptime for any device, basic users only their own
         $sql = "SELECT ip FROM devices WHERE id = ?";
         $params = [$deviceId];
         if (!$is_admin) {
-            $sql .= " AND user_id = ?";
-            $params[] = $current_user_id;
+            $permission_conditions = buildDevicePermissionConditions($current_user_id);
+            $sql .= " AND ({$permission_conditions['sql']})";
+            $params = array_merge($params, $permission_conditions['params']);
         }
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
@@ -383,19 +399,19 @@ switch ($action) {
         $stats7d = $stmt->fetch(PDO::FETCH_ASSOC);
         $uptime7d = ($stats7d['total'] > 0) ? round(($stats7d['successful'] / $stats7d['total']) * 100, 2) : null;
 
-        echo json_encode(['uptime_24h' => $uptime24h, 'uptime_7d' => $uptime7d, 'outages_24h' => $outages7d]);
+        echo json_encode(['uptime_24h' => $uptime24h, 'uptime_7d' => $uptime7d, 'outages_24h' => $outages24h]);
         break;
 
     case 'get_device_details':
         $deviceId = $_GET['id'] ?? 0;
         if (!$deviceId) { http_response_code(400); echo json_encode(['error' => 'Device ID is required']); exit; }
         
-        // Admins can get details for any device, basic users only their own
         $sql = "SELECT d.*, m.name as map_name FROM devices d LEFT JOIN maps m ON d.map_id = m.id WHERE d.id = ?";
         $params = [$deviceId];
         if (!$is_admin) {
-            $sql .= " AND d.user_id = ?";
-            $params[] = $current_user_id;
+            $permission_conditions = buildDevicePermissionConditions($current_user_id);
+            $sql .= " AND ({$permission_conditions['sql']})";
+            $params = array_merge($params, $permission_conditions['params']);
         }
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
@@ -437,22 +453,9 @@ switch ($action) {
 
         if (!$is_admin) {
             // For basic users, apply complex permission logic
-            $sql .= " AND (";
-
-            $conditions = [];
-            $condition_params = [];
-
-            // Condition 1: Devices created by the current user
-            $conditions[] = "d.user_id = ?";
-            $condition_params[] = $current_user_id;
-
-            // Condition 2: Devices on maps the user has permission for
-            // This applies only if the device is actually assigned to a map
-            $conditions[] = "d.map_id IN (SELECT map_id FROM user_map_permissions WHERE user_id = ?)";
-            $condition_params[] = $current_user_id;
-
-            $sql .= implode(" OR ", $conditions) . ")";
-            $params = array_merge($params, $condition_params);
+            $permission_conditions = buildDevicePermissionConditions($current_user_id);
+            $sql .= " AND ({$permission_conditions['sql']})";
+            $params = array_merge($params, $permission_conditions['params']);
 
             // If a specific map_id is requested, further restrict to that map
             if ($map_id) {
@@ -484,8 +487,9 @@ switch ($action) {
         $sql = "SELECT id, name, ip, type FROM devices WHERE map_id IS NULL";
         $params = [];
         if (!$is_admin) {
-            $sql .= " AND user_id = ?";
-            $params[] = $current_user_id;
+            $permission_conditions = buildDevicePermissionConditions($current_user_id);
+            $sql .= " AND ({$permission_conditions['sql']})";
+            $params = array_merge($params, $permission_conditions['params']);
         }
         $sql .= " ORDER BY name ASC";
         $stmt = $pdo->prepare($sql);
