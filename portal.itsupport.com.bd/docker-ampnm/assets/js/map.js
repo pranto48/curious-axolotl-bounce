@@ -510,10 +510,14 @@ function initMap() {
 
                 if (nodeId) {
                     const node = MapApp.state.nodes.get(nodeId);
-                    contextMenu.innerHTML = `
-                        <div class="context-menu-item" data-action="ping" data-id="${nodeId}"><i class="fas fa-sync fa-fw mr-2"></i>Check Status</div>
-                        <div class="context-menu-item" data-action="read-only-info" style="color: #f59e0b;"><i class="fas fa-info-circle fa-fw mr-2"></i>Read-Only Mode</div>
-                    `;
+                    // Only show "Check Status" if admin
+                    let contextMenuItems = '';
+                    if (IS_ADMIN) {
+                        contextMenuItems += `<div class="context-menu-item" data-action="ping" data-id="${nodeId}"><i class="fas fa-sync fa-fw mr-2"></i>Check Status</div>`;
+                    }
+                    contextMenuItems += `<div class="context-menu-item" data-action="read-only-info" style="color: #f59e0b;"><i class="fas fa-info-circle fa-fw mr-2"></i>Read-Only Mode</div>`;
+                    
+                    contextMenu.innerHTML = contextMenuItems;
                     contextMenu.style.left = `${params.pointer.DOM.x}px`;
                     contextMenu.style.top = `${params.pointer.DOM.y}px`;
                     contextMenu.style.display = 'block';
