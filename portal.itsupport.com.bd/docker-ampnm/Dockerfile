@@ -30,8 +30,8 @@ RUN a2enmod rewrite
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Copy application files from the ampnm-app-source directory
-COPY ampnm-app-source/ /var/www/html/
+# Copy application files from the current directory
+COPY . /var/www/html/
 
 # Install PHPMailer
 WORKDIR /var/www/html
