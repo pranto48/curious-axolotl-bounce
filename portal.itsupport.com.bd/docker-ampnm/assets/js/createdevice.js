@@ -45,25 +45,17 @@ function initCreateDevice() {
         try {
             const maps = await api.get('get_maps');
             console.log('Maps fetched for selector in createdevice.js:', maps); // Debug log
-            let defaultMapId = null;
-            let optionsHtml = '<option value="">-- No Map --</option>';
+            let optionsHtml = '<option value="">-- No Map --</option>'; // Start with "No Map" selected
 
             if (maps.length > 0) {
                 maps.forEach(map => {
                     optionsHtml += `<option value="${map.id}">${map.name}</option>`;
-                    if (map.is_default == 1) {
-                        defaultMapId = map.id;
-                        console.log('Found default map:', map); // Debug log
-                    }
                 });
             }
             deviceMapSelect.innerHTML = optionsHtml;
-            if (defaultMapId) {
-                deviceMapSelect.value = defaultMapId;
-                console.log(`Default map '${defaultMapId}' selected.`);
-            } else {
-                console.log('No default map found or no maps available. "No Map" selected.');
-            }
+            // Do NOT automatically set deviceMapSelect.value to defaultMapId
+            // The first option "-- No Map --" will be selected by default.
+            console.log('Map selector populated. "No Map" is selected by default.');
         } catch (error) {
             console.error('Failed to load maps:', error);
             window.notyf.error('Failed to load maps for assignment.');
