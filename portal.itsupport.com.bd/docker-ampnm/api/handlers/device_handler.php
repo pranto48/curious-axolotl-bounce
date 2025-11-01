@@ -1,6 +1,7 @@
 <?php
 // This file is included by api.php and assumes $pdo, $action, and $input are available.
 $current_user_id = $_SESSION['user_id'];
+$is_admin = $_SESSION['role'] === 'admin';
 
 // Enforce admin-only access for modification and check actions
 $adminOnlyActions = [
@@ -9,7 +10,7 @@ $adminOnlyActions = [
     'check_device' // <-- Restrict single device check to admin
 ];
 
-if (in_array($action, $adminOnlyActions) && ($_SESSION['role'] !== 'admin')) {
+if (in_array($action, $adminOnlyActions) && !$is_admin) {
     http_response_code(403);
     echo json_encode(['error' => 'Forbidden: Only admin users can modify devices or trigger checks.']);
     exit;
@@ -170,8 +171,15 @@ switch ($action) {
 
     case 'check_all_devices_globally':
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $stmt = $pdo->prepare("SELECT * FROM devices WHERE enabled = TRUE AND user_id = ? AND ip IS NOT NULL AND ip != '' AND type != 'box'");
-            $stmt->execute([$current_user_id]);
+            // Admins can check all devices, basic users only their own
+            $sql = "SELECT * FROM devices WHERE enabled = TRUE AND ip IS NOT NULL AND ip != '' AND type != 'box'";
+            $params = [];
+            if (!$is_admin) {
+                $sql .= " AND user_id = ?";
+                $params[] = $current_user_id;
+            }
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($params);
             $devices = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             $checked_count = 0;
@@ -204,11 +212,10 @@ switch ($action) {
                 if ($old_status !== $new_status) {
                     logStatusChange($pdo, $device['id'], $old_status, $new_status, $details);
                     sendEmailNotification($pdo, $device, $old_status, $new_status, $details); // Trigger email notification
-                    $status_changes++;
                 }
                 
-                $updateStmt = $pdo->prepare("UPDATE devices SET status = ?, last_seen = ?, last_avg_time = ?, last_ttl = ? WHERE id = ? AND user_id = ?");
-                $updateStmt->execute([$new_status, $last_seen, $last_avg_time, $last_ttl, $device['id'], $current_user_id]);
+                $updateStmt = $pdo->prepare("UPDATE devices SET status = ?, last_seen = ?, last_avg_time = ?, last_ttl = ? WHERE id = ?");
+                $updateStmt->execute([$new_status, $last_seen, $last_avg_time, $last_ttl, $device['id']]);
                 $checked_count++;
             }
             
@@ -226,8 +233,15 @@ switch ($action) {
             $map_id = $input['map_id'] ?? null;
             if (!$map_id) { http_response_code(400); echo json_encode(['error' => 'Map ID is required']); exit; }
 
-            $stmt = $pdo->prepare("SELECT * FROM devices WHERE enabled = TRUE AND map_id = ? AND user_id = ? AND ip IS NOT NULL AND type != 'box'");
-            $stmt->execute([$map_id, $current_user_id]);
+            // Admins can check all devices on a map, basic users only their own on a map
+            $sql = "SELECT * FROM devices WHERE enabled = TRUE AND map_id = ? AND ip IS NOT NULL AND type != 'box'";
+            $params = [$map_id];
+            if (!$is_admin) {
+                $sql .= " AND user_id = ?";
+                $params[] = $current_user_id;
+            }
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($params);
             $devices = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             $updated_devices = [];
@@ -263,8 +277,8 @@ switch ($action) {
                 
                 logStatusChange($pdo, $device['id'], $old_status, $status, $details);
                 sendEmailNotification($pdo, $device, $old_status, $status, $details); // Trigger email notification
-                $updateStmt = $pdo->prepare("UPDATE devices SET status = ?, last_seen = ?, last_avg_time = ?, last_ttl = ? WHERE id = ? AND user_id = ?");
-                $updateStmt->execute([$status, $last_seen, $last_avg_time, $last_ttl, $device['id'], $current_user_id]);
+                $updateStmt = $pdo->prepare("UPDATE devices SET status = ?, last_seen = ?, last_avg_time = ?, last_ttl = ? WHERE id = ?");
+                $updateStmt->execute([$status, $last_seen, $last_avg_time, $last_ttl, $device['id']]);
 
                 $updated_devices[] = [
                     'id' => $device['id'],
@@ -287,11 +301,18 @@ switch ($action) {
             $deviceId = $input['id'] ?? 0;
             if (!$deviceId) { http_response_code(400); echo json_encode(['error' => 'Device ID is required']); exit; }
             
-            $stmt = $pdo->prepare("SELECT * FROM devices WHERE id = ? AND user_id = ?");
-            $stmt->execute([$deviceId, $current_user_id]);
+            // Admins can check any device, basic users only their own
+            $sql = "SELECT * FROM devices WHERE id = ?";
+            $params = [$deviceId];
+            if (!$is_admin) {
+                $sql .= " AND user_id = ?";
+                $params[] = $current_user_id;
+            }
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($params);
             $device = $stmt->fetch(PDO::FETCH_ASSOC);
             
-            if (!$device) { http_response_code(404); echo json_encode(['error' => 'Device not found']); exit; }
+            if (!$device) { http_response_code(404); echo json_encode(['error' => 'Device not found or access denied']); exit; }
 
             $old_status = $device['status'];
             $status = 'unknown';
@@ -323,8 +344,8 @@ switch ($action) {
             
             logStatusChange($pdo, $deviceId, $old_status, $status, $details);
             sendEmailNotification($pdo, $device, $old_status, $status, $details); // Trigger email notification
-            $stmt = $pdo->prepare("UPDATE devices SET status = ?, last_seen = ?, last_avg_time = ?, last_ttl = ? WHERE id = ? AND user_id = ?");
-            $stmt->execute([$status, $last_seen, $last_avg_time, $last_ttl, $deviceId, $current_user_id]);
+            $stmt = $pdo->prepare("UPDATE devices SET status = ?, last_seen = ?, last_avg_time = ?, last_ttl = ? WHERE id = ?");
+            $stmt->execute([$status, $last_seen, $last_avg_time, $last_ttl, $deviceId]);
             
             echo json_encode(['id' => $deviceId, 'status' => $status, 'last_seen' => $last_seen, 'last_avg_time' => $last_avg_time, 'last_ttl' => $last_ttl, 'last_ping_output' => $check_output]);
         }
@@ -334,8 +355,15 @@ switch ($action) {
         $deviceId = $_GET['id'] ?? 0;
         if (!$deviceId) { http_response_code(400); echo json_encode(['error' => 'Device ID is required']); exit; }
         
-        $stmt = $pdo->prepare("SELECT ip FROM devices WHERE id = ? AND user_id = ?");
-        $stmt->execute([$deviceId, $current_user_id]);
+        // Admins can view uptime for any device, basic users only their own
+        $sql = "SELECT ip FROM devices WHERE id = ?";
+        $params = [$deviceId];
+        if (!$is_admin) {
+            $sql .= " AND user_id = ?";
+            $params[] = $current_user_id;
+        }
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
         $device = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$device || !$device['ip']) {
@@ -361,10 +389,18 @@ switch ($action) {
     case 'get_device_details':
         $deviceId = $_GET['id'] ?? 0;
         if (!$deviceId) { http_response_code(400); echo json_encode(['error' => 'Device ID is required']); exit; }
-        $stmt = $pdo->prepare("SELECT d.*, m.name as map_name FROM devices d LEFT JOIN maps m ON d.map_id = m.id WHERE d.id = ? AND d.user_id = ?");
-        $stmt->execute([$deviceId, $current_user_id]);
+        
+        // Admins can get details for any device, basic users only their own
+        $sql = "SELECT d.*, m.name as map_name FROM devices d LEFT JOIN maps m ON d.map_id = m.id WHERE d.id = ?";
+        $params = [$deviceId];
+        if (!$is_admin) {
+            $sql .= " AND d.user_id = ?";
+            $params[] = $current_user_id;
+        }
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
         $device = $stmt->fetch(PDO::FETCH_ASSOC);
-        if (!$device) { http_response_code(404); echo json_encode(['error' => 'Device not found']); exit; }
+        if (!$device) { http_response_code(404); echo json_encode(['error' => 'Device not found or access denied']); exit; }
         $history = [];
         if ($device['ip']) {
             $stmt = $pdo->prepare("SELECT * FROM ping_results WHERE host = ? ORDER BY created_at DESC LIMIT 20");
@@ -395,9 +431,15 @@ switch ($action) {
                     ORDER BY created_at DESC 
                     LIMIT 1
                 )
-            WHERE d.user_id = ?
+            WHERE 1=1
         ";
-        $params = [$current_user_id];
+        $params = [];
+        // Basic users only see their own devices, admins see all
+        if (!$is_admin) {
+            $sql .= " AND d.user_id = ?";
+            $params[] = $current_user_id;
+        }
+
         if ($map_id) { 
             $sql .= " AND d.map_id = ?"; 
             $params[] = $map_id; 
@@ -413,8 +455,15 @@ switch ($action) {
         break;
 
     case 'get_unmapped_devices': // NEW ACTION
-        $stmt = $pdo->prepare("SELECT id, name, ip, type FROM devices WHERE user_id = ? AND map_id IS NULL ORDER BY name ASC");
-        $stmt->execute([$current_user_id]);
+        $sql = "SELECT id, name, ip, type FROM devices WHERE map_id IS NULL";
+        $params = [];
+        if (!$is_admin) {
+            $sql .= " AND user_id = ?";
+            $params[] = $current_user_id;
+        }
+        $sql .= " ORDER BY name ASC";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
         $unmappedDevices = $stmt->fetchAll(PDO::FETCH_ASSOC);
         echo json_encode($unmappedDevices);
         break;
@@ -437,13 +486,22 @@ switch ($action) {
                 $current_user_id, $input['name'], $input['ip'] ?? null, $input['check_port'] ?? null, $input['type'], $input['description'] ?? null, $input['map_id'] ?? null,
                 $input['x'] ?? null, $input['y'] ?? null,
                 $input['ping_interval'] ?? null, $input['icon_size'] ?? 50, $input['name_text_size'] ?? 14, $input['icon_url'] ?? null,
-                $input['warning_latency_threshold'] ?? null, $input['warning_packetloss_threshold'] ?? null,
-                $input['critical_latency_threshold'] ?? null, $input['critical_packetloss_threshold'] ?? null,
+                $input['warning_latency_threshold'] ?? null,
+                $input['warning_packetloss_threshold'] ?? null,
+                $input['critical_latency_threshold'] ?? null,
+                $input['critical_packetloss_threshold'] ?? null,
                 ($input['show_live_ping'] ?? false) ? 1 : 0
             ]);
             $lastId = $pdo->lastInsertId();
-            $stmt = $pdo->prepare("SELECT * FROM devices WHERE id = ? AND user_id = ?");
-            $stmt->execute([$lastId, $current_user_id]);
+            // Fetch the newly created device, respecting admin's ability to see all
+            $sql = "SELECT * FROM devices WHERE id = ?";
+            $params = [$lastId];
+            if (!$is_admin) {
+                $sql .= " AND user_id = ?";
+                $params[] = $current_user_id;
+            }
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($params);
             $device = $stmt->fetch(PDO::FETCH_ASSOC);
             echo json_encode(['success' => true, 'device' => $device]);
         }
@@ -467,11 +525,26 @@ switch ($action) {
                 }
             }
             if (empty($fields)) { http_response_code(400); echo json_encode(['error' => 'No valid fields to update']); exit; }
-            $params[] = $id; $params[] = $current_user_id;
-            $sql = "UPDATE devices SET " . implode(', ', $fields) . " WHERE id = ? AND user_id = ?";
+            
+            $sql = "UPDATE devices SET " . implode(', ', $fields) . ", updated_at = CURRENT_TIMESTAMP WHERE id = ?";
+            $params[] = $id;
+            // Only restrict by user_id if not an admin
+            if (!$is_admin) {
+                $sql .= " AND user_id = ?";
+                $params[] = $current_user_id;
+            }
             $stmt = $pdo->prepare($sql); $stmt->execute($params);
-            $stmt = $pdo->prepare("SELECT d.*, m.name as map_name FROM devices d LEFT JOIN maps m ON d.map_id = m.id WHERE d.id = ? AND d.user_id = ?"); $stmt->execute([$id, $current_user_id]);
-            $device = $stmt->fetch(PDO::FETCH_ASSOC); echo json_encode($device);
+            
+            // Fetch the updated device, respecting admin's ability to see all
+            $sql = "SELECT d.*, m.name as map_name FROM devices d LEFT JOIN maps m ON d.map_id = m.id WHERE d.id = ?";
+            $params = [$id];
+            if (!$is_admin) {
+                $sql .= " AND d.user_id = ?";
+                $params[] = $current_user_id;
+            }
+            $stmt = $pdo->prepare($sql); $stmt->execute($params);
+            $device = $stmt->fetch(PDO::FETCH_ASSOC); 
+            echo json_encode($device);
         }
         break;
 
@@ -479,7 +552,15 @@ switch ($action) {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $id = $input['id'] ?? null;
             if (!$id) { http_response_code(400); echo json_encode(['error' => 'Device ID is required']); exit; }
-            $stmt = $pdo->prepare("DELETE FROM devices WHERE id = ? AND user_id = ?"); $stmt->execute([$id, $current_user_id]);
+            
+            $sql = "DELETE FROM devices WHERE id = ?";
+            $params = [$id];
+            // Only restrict by user_id if not an admin
+            if (!$is_admin) {
+                $sql .= " AND user_id = ?";
+                $params[] = $current_user_id;
+            }
+            $stmt = $pdo->prepare($sql); $stmt->execute($params);
             echo json_encode(['success' => true, 'message' => 'Device deleted successfully']);
         }
         break;
@@ -493,8 +574,15 @@ switch ($action) {
                 exit;
             }
     
-            $stmt = $pdo->prepare("SELECT id FROM devices WHERE id = ? AND user_id = ?");
-            $stmt->execute([$deviceId, $current_user_id]);
+            // Admins can upload icons for any device, basic users only their own
+            $sql = "SELECT id FROM devices WHERE id = ?";
+            $params = [$deviceId];
+            if (!$is_admin) {
+                $sql .= " AND user_id = ?";
+                $params[] = $current_user_id;
+            }
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($params);
             if (!$stmt->fetch()) {
                 http_response_code(404);
                 echo json_encode(['error' => 'Device not found or access denied.']);
@@ -531,8 +619,14 @@ switch ($action) {
             $urlPath = 'uploads/icons/' . $newFileName;
     
             if (move_uploaded_file($file['tmp_name'], $uploadPath)) {
-                $stmt = $pdo->prepare("UPDATE devices SET icon_url = ? WHERE id = ? AND user_id = ?");
-                $stmt->execute([$urlPath, $deviceId, $current_user_id]);
+                $sql = "UPDATE devices SET icon_url = ? WHERE id = ?";
+                $params = [$urlPath, $deviceId];
+                if (!$is_admin) {
+                    $sql .= " AND user_id = ?";
+                    $params[] = $current_user_id;
+                }
+                $stmt = $pdo->prepare($sql);
+                $stmt->execute($params);
                 echo json_encode(['success' => true, 'url' => $urlPath]);
             } else {
                 http_response_code(500);
