@@ -139,6 +139,75 @@ function initMap() {
             }
         });
 
+        // Add Device Button (opens modal for new device)
+        els.addDeviceBtn.addEventListener('click', () => {
+            if (!state.currentMapId) {
+                window.notyf.error('Please select a map first to add a device.');
+                return;
+            }
+            MapApp.ui.openDeviceModal(null, { map_id: state.currentMapId }); // Pass current map ID
+        });
+
+        // Place Existing Device Button
+        els.placeDeviceBtn.addEventListener('click', async () => {
+            if (!state.currentMapId) {
+                window.notyf.error('Please select a map first to place a device.');
+                return;
+            }
+            openModal('placeDeviceModal');
+            await populatePlaceDeviceList();
+        });
+
+        els.closePlaceDeviceModal.addEventListener('click', () => closeModal('placeDeviceModal'));
+
+        const populatePlaceDeviceList = async () => {
+            els.placeDeviceLoader.classList.remove('hidden');
+            els.placeDeviceList.innerHTML = '';
+            try {
+                const unmappedDevices = await api.get('get_devices', { unmapped: true });
+                if (unmappedDevices.length === 0) {
+                    els.placeDeviceList.innerHTML = '<p class="text-slate-500 text-center py-4">No unmapped devices found in your inventory.</p>';
+                } else {
+                    els.placeDeviceList.innerHTML = unmappedDevices.map(device => `
+                        <div class="flex items-center justify-between p-3 border-b border-slate-700 last:border-b-0 hover:bg-slate-700/50 cursor-pointer" data-device-id="${device.id}" data-device-name="${device.name}" data-device-ip="${device.ip || ''}">
+                            <div>
+                                <div class="font-medium text-white">${device.name}</div>
+                                <div class="text-sm text-slate-400">${device.ip || 'No IP'}</div>
+                            </div>
+                            <button class="place-device-action-btn px-3 py-1 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700" data-device-id="${device.id}">Place</button>
+                        </div>
+                    `).join('');
+
+                    els.placeDeviceList.querySelectorAll('.place-device-action-btn').forEach(button => {
+                        button.addEventListener('click', async (e) => {
+                            const deviceId = e.target.dataset.deviceId;
+                            const deviceName = e.target.closest('[data-device-id]').dataset.deviceName;
+                            const defaultX = Math.floor(Math.random() * 500) + 50; // Random position
+                            const defaultY = Math.floor(Math.random() * 300) + 50;
+
+                            try {
+                                await api.post('update_device', { 
+                                    id: deviceId, 
+                                    updates: { map_id: state.currentMapId, x: defaultX, y: defaultY } 
+                                });
+                                window.notyf.success(`Device '${deviceName}' placed on the map.`);
+                                closeModal('placeDeviceModal');
+                                mapManager.switchMap(state.currentMapId); // Refresh map
+                            } catch (error) {
+                                window.notyf.error(`Failed to place device '${deviceName}'.`);
+                                console.error('Error placing device:', error);
+                            }
+                        });
+                    });
+                }
+            } catch (error) {
+                window.notyf.error('Failed to load unmapped devices.');
+                console.error('Error loading unmapped devices:', error);
+            } finally {
+                els.placeDeviceLoader.classList.add('hidden');
+            }
+        };
+
     } else {
         // Non-admin user: Disable all modification features
         

@@ -75,6 +75,7 @@ MapApp.ui = {
             document.getElementById('deviceId').value = node.id;
             document.getElementById('deviceName').value = node.deviceData.name;
             document.getElementById('deviceIp').value = node.deviceData.ip;
+            document.getElementById('deviceDescription').value = node.deviceData.description; // Added description
             document.getElementById('checkPort').value = node.deviceData.check_port;
             document.getElementById('deviceType').value = node.deviceData.type;
             document.getElementById('icon_url').value = node.deviceData.icon_url || '';
@@ -94,6 +95,16 @@ MapApp.ui = {
             document.getElementById('modalTitle').textContent = 'Add Item';
             document.getElementById('deviceName').value = prefill.name || '';
             document.getElementById('deviceIp').value = prefill.ip || '';
+            // Set default values for new devices
+            document.getElementById('deviceType').value = 'server';
+            document.getElementById('iconSize').value = 50;
+            document.getElementById('nameTextSize').value = 14;
+            document.getElementById('showLivePing').checked = false;
+            document.getElementById('pingInterval').value = ''; // Clear interval for new devices
+            document.getElementById('warning_latency_threshold').value = '';
+            document.getElementById('warning_packetloss_threshold').value = '';
+            document.getElementById('critical_latency_threshold').value = '';
+            document.getElementById('critical_packetloss_threshold').value = '';
         }
         MapApp.ui.toggleDeviceModalFields(document.getElementById('deviceType').value);
         MapApp.ui.els.deviceModal.classList.remove('hidden');
