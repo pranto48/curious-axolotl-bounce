@@ -2,6 +2,104 @@
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
+
+$current_page = basename($_SERVER['PHP_SELF']);
+$is_admin = $_SESSION['role'] ?? 'basic' === 'admin';
+
+// Define the menu structure
+$menu_items = [
+    [
+        'label' => 'Dashboard',
+        'icon' => 'fas fa-tachometer-alt',
+        'link' => 'index.php',
+        'roles' => ['admin', 'basic']
+    ],
+    [
+        'label' => 'Monitoring',
+        'icon' => 'fas fa-chart-line',
+        'roles' => ['admin', 'basic'],
+        'submenu' => [
+            [
+                'label' => 'Devices',
+                'icon' => 'fas fa-server',
+                'link' => 'devices.php',
+                'roles' => ['admin', 'basic']
+            ],
+            [
+                'label' => 'History',
+                'icon' => 'fas fa-history',
+                'link' => 'history.php',
+                'roles' => ['admin', 'basic']
+            ],
+            [
+                'label' => 'Status Logs',
+                'icon' => 'fas fa-clipboard-list',
+                'link' => 'status_logs.php',
+                'roles' => ['admin']
+            ],
+            [
+                'label' => 'Email Notifications',
+                'icon' => 'fas fa-envelope',
+                'link' => 'email_notifications.php',
+                'roles' => ['admin']
+            ],
+        ]
+    ],
+    [
+        'label' => 'Network Map',
+        'icon' => 'fas fa-project-diagram',
+        'roles' => ['admin', 'basic'],
+        'submenu' => [
+            [
+                'label' => 'View Map',
+                'icon' => 'fas fa-map',
+                'link' => 'map.php',
+                'roles' => ['admin', 'basic']
+            ],
+            [
+                'label' => 'Map Management',
+                'icon' => 'fas fa-map-marked-alt',
+                'link' => 'map_manager.php',
+                'roles' => ['admin']
+            ],
+        ]
+    ],
+    [
+        'label' => 'Admin Tools',
+        'icon' => 'fas fa-users-cog',
+        'roles' => ['admin'],
+        'submenu' => [
+            [
+                'label' => 'Users',
+                'icon' => 'fas fa-users',
+                'link' => 'users.php',
+                'roles' => ['admin']
+            ],
+        ]
+    ],
+    [
+        'label' => 'My Profile',
+        'icon' => 'fas fa-user-circle',
+        'link' => 'profile.php',
+        'roles' => ['admin', 'basic']
+    ],
+    [
+        'label' => 'Logout',
+        'icon' => 'fas fa-sign-out-alt',
+        'link' => 'logout.php',
+        'roles' => ['admin', 'basic']
+    ],
+];
+
+// Function to check if a menu item should be displayed for the current user role
+function can_access($item_roles, $current_role) {
+    return in_array($current_role, $item_roles);
+}
+
+// Function to check if a link is active
+function is_active($link, $current_page) {
+    return $link === $current_page || ($current_page === 'index.php' && $link === '/');
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -27,24 +125,84 @@ if (session_status() === PHP_SESSION_NONE) {
                         <span>AMPNM</span>
                     </a>
                 </div>
+
+                <!-- Desktop Menu -->
                 <div class="hidden md:block">
                     <div id="main-nav" class="ml-10 flex items-baseline space-x-1">
-                        <a href="index.php" class="nav-link"><i class="fas fa-tachometer-alt fa-fw mr-2"></i>Dashboard</a>
-                        <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
-                            <a href="devices.php" class="nav-link"><i class="fas fa-server fa-fw mr-2"></i>Devices</a>
-                            <a href="map_manager.php" class="nav-link"><i class="fas fa-map-marked-alt fa-fw mr-2"></i>Map Management</a>
-                        <?php endif; ?>
-                        <a href="history.php" class="nav-link"><i class="fas fa-history fa-fw mr-2"></i>History</a>
-                        <a href="map.php" class="nav-link"><i class="fas fa-project-diagram fa-fw mr-2"></i>Map</a>
-                        <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
-                            <a href="status_logs.php" class="nav-link"><i class="fas fa-clipboard-list fa-fw mr-2"></i>Status Logs</a>
-                            <a href="email_notifications.php" class="nav-link"><i class="fas fa-envelope fa-fw mr-2"></i>Email Notifications</a>
-                            <a href="users.php" class="nav-link"><i class="fas fa-users-cog fa-fw mr-2"></i>Users</a>
-                        <?php endif; ?>
-                        <a href="profile.php" class="nav-link"><i class="fas fa-user-circle fa-fw mr-2"></i>My Profile</a>
-                        <a href="logout.php" class="nav-link"><i class="fas fa-sign-out-alt fa-fw mr-2"></i>Logout</a>
+                        <?php foreach ($menu_items as $item): ?>
+                            <?php if (can_access($item['roles'], $_SESSION['role'] ?? 'basic')): ?>
+                                <?php if (isset($item['submenu'])): ?>
+                                    <div class="relative group">
+                                        <button class="nav-link flex items-center">
+                                            <i class="<?= $item['icon'] ?> fa-fw mr-2"></i>
+                                            <span><?= $item['label'] ?></span>
+                                            <i class="fas fa-chevron-down ml-2 text-xs"></i>
+                                        </button>
+                                        <div class="absolute left-0 mt-2 w-48 bg-slate-800 border border-slate-700 rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 transition-all duration-200 ease-out transform translate-y-2 z-10">
+                                            <?php foreach ($item['submenu'] as $sub_item): ?>
+                                                <?php if (can_access($sub_item['roles'], $_SESSION['role'] ?? 'basic')): ?>
+                                                    <a href="<?= $sub_item['link'] ?>" class="block px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white rounded-md <?= is_active($sub_item['link'], $current_page) ? 'bg-slate-700 text-white' : '' ?>">
+                                                        <i class="<?= $sub_item['icon'] ?> fa-fw mr-2"></i>
+                                                        <?= $sub_item['label'] ?>
+                                                    </a>
+                                                <?php endif; ?>
+                                            <?php endforeach; ?>
+                                        </div>
+                                    </div>
+                                <?php else: ?>
+                                    <a href="<?= $item['link'] ?>" class="nav-link <?= is_active($item['link'], $current_page) ? 'bg-slate-700 text-white' : '' ?>">
+                                        <i class="<?= $item['icon'] ?> fa-fw mr-2"></i>
+                                        <span><?= $item['label'] ?></span>
+                                    </a>
+                                <?php endif; ?>
+                            <?php endif; ?>
+                        <?php endforeach; ?>
                     </div>
                 </div>
+
+                <!-- Mobile Menu Button -->
+                <div class="md:hidden flex items-center">
+                    <button id="mobile-menu-button" class="text-slate-300 hover:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 p-2 rounded-md">
+                        <i class="fas fa-bars text-xl"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Menu (Hidden by default) -->
+        <div id="mobile-menu" class="md:hidden hidden fixed inset-0 bg-slate-900 bg-opacity-95 z-40 overflow-y-auto">
+            <div class="flex justify-end p-4">
+                <button id="close-mobile-menu-button" class="text-slate-300 hover:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 p-2 rounded-md">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+                <?php foreach ($menu_items as $item): ?>
+                    <?php if (can_access($item['roles'], $_SESSION['role'] ?? 'basic')): ?>
+                        <?php if (isset($item['submenu'])): ?>
+                            <div class="mobile-submenu-toggle block px-3 py-2 rounded-md text-base font-medium text-slate-300 hover:bg-slate-700 hover:text-white cursor-pointer">
+                                <i class="<?= $item['icon'] ?> fa-fw mr-2"></i>
+                                <span><?= $item['label'] ?></span>
+                                <i class="fas fa-chevron-down ml-auto text-xs transform transition-transform duration-200"></i>
+                            </div>
+                            <div class="mobile-submenu hidden pl-4 pr-2 py-1 space-y-1">
+                                <?php foreach ($item['submenu'] as $sub_item): ?>
+                                    <?php if (can_access($sub_item['roles'], $_SESSION['role'] ?? 'basic')): ?>
+                                        <a href="<?= $sub_item['link'] ?>" class="block px-3 py-2 rounded-md text-sm font-medium text-slate-400 hover:bg-slate-700 hover:text-white <?= is_active($sub_item['link'], $current_page) ? 'bg-slate-700 text-white' : '' ?>">
+                                            <i class="<?= $sub_item['icon'] ?> fa-fw mr-2"></i>
+                                            <?= $sub_item['label'] ?>
+                                        </a>
+                                    <?php endif; ?>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php else: ?>
+                            <a href="<?= $item['link'] ?>" class="block px-3 py-2 rounded-md text-base font-medium text-slate-300 hover:bg-slate-700 hover:text-white <?= is_active($item['link'], $current_page) ? 'bg-slate-700 text-white' : '' ?>">
+                                <i class="<?= $item['icon'] ?> fa-fw mr-2"></i>
+                                <span><?= $item['label'] ?></span>
+                            </a>
+                        <?php endif; ?>
+                    <?php endif; ?>
+                <?php endforeach; ?>
             </div>
         </div>
     </nav>

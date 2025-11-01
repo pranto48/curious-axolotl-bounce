@@ -24,10 +24,10 @@
     <script src="assets/js/users.js"></script>
     <script src="assets/js/status_logs.js"></script>
     <script src="assets/js/email_notifications.js"></script>
-    <script src="assets/js/createdevice.js"></script> <!-- Re-added createdevice.js -->
-    <script src="assets/js/editdevice.js"></script> <!-- NEW: Include editdevice.js -->
+    <script src="assets/js/createdevice.js"></script>
+    <script src="assets/js/editdevice.js"></script>
     <script src="assets/js/profile.js"></script>
-    <script src="assets/js/map_manager.js"></script> <!-- NEW: Include map_manager.js -->
+    <script src="assets/js/map_manager.js"></script>
     
     <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -44,17 +44,42 @@
 
         const page = '<?php echo basename($_SERVER['PHP_SELF']); ?>';
         
-        // Set active nav link
-        const navLinks = document.querySelectorAll('#main-nav a');
-        navLinks.forEach(link => {
-            const linkPage = link.getAttribute('href');
-            if (linkPage === page || (page === 'index.php' && linkPage === '/')) {
-                link.classList.add('bg-slate-700', 'text-white');
-            }
-        });
-
         // Pass admin status to JS for client-side checks
         window.isAdmin = <?php echo json_encode($_SESSION['is_admin'] ?? false); ?>;
+
+        // --- Mobile Menu Toggle Logic ---
+        const mobileMenuButton = document.getElementById('mobile-menu-button');
+        const closeMobileMenuButton = document.getElementById('close-mobile-menu-button');
+        const mobileMenu = document.getElementById('mobile-menu');
+        const mobileSubmenuToggles = document.querySelectorAll('.mobile-submenu-toggle');
+
+        if (mobileMenuButton) {
+            mobileMenuButton.addEventListener('click', () => {
+                mobileMenu.classList.remove('hidden');
+                document.body.style.overflow = 'hidden'; // Prevent scrolling background
+            });
+        }
+
+        if (closeMobileMenuButton) {
+            closeMobileMenuButton.addEventListener('click', () => {
+                mobileMenu.classList.add('hidden');
+                document.body.style.overflow = ''; // Restore scrolling
+            });
+        }
+
+        mobileSubmenuToggles.forEach(toggle => {
+            toggle.addEventListener('click', () => {
+                const submenu = toggle.nextElementSibling; // The submenu div
+                const chevron = toggle.querySelector('.fa-chevron-down');
+
+                if (submenu && submenu.classList.contains('mobile-submenu')) {
+                    submenu.classList.toggle('hidden');
+                    chevron.classList.toggle('rotate-180'); // Rotate chevron
+                }
+            });
+        });
+        // --- End Mobile Menu Toggle Logic ---
+
 
         // Initialize page-specific JS
         if (page === 'index.php') {
@@ -73,11 +98,11 @@
             initEmailNotifications();
         } else if (page === 'createdevice.php') {
             initCreateDevice();
-        } else if (page === 'editdevice.php') { // NEW: Initialize editdevice.js
+        } else if (page === 'editdevice.php') {
             initEditDevicePage();
         } else if (page === 'profile.php') {
             initProfile();
-        } else if (page === 'map_manager.php') { // NEW: Initialize map_manager.js
+        } else if (page === 'map_manager.php') {
             initMapManager();
         }
     });
