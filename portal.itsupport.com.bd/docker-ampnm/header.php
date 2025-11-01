@@ -32,6 +32,7 @@ if (session_status() === PHP_SESSION_NONE) {
                         <a href="index.php" class="nav-link"><i class="fas fa-tachometer-alt fa-fw mr-2"></i>Dashboard</a>
                         <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
                             <a href="devices.php" class="nav-link"><i class="fas fa-server fa-fw mr-2"></i>Devices</a>
+                            <a href="map_manager.php" class="nav-link"><i class="fas fa-map-marked-alt fa-fw mr-2"></i>Map Management</a>
                         <?php endif; ?>
                         <a href="history.php" class="nav-link"><i class="fas fa-history fa-fw mr-2"></i>History</a>
                         <a href="map.php" class="nav-link"><i class="fas fa-project-diagram fa-fw mr-2"></i>Map</a>

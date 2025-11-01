@@ -13,9 +13,7 @@ $is_admin = $_SESSION['is_admin'] ?? false;
                 <div class="flex gap-4">
                     <select id="mapSelector" class="bg-slate-900 border border-slate-600 rounded-lg px-4 py-2 focus:ring-2 focus:ring-cyan-500"></select>
                     <?php if ($is_admin): ?>
-                        <button id="newMapBtn" class="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700"><i class="fas fa-plus mr-2"></i>New Map</button>
-                        <button id="renameMapBtn" class="px-4 py-2 bg-yellow-600/80 text-white rounded-lg hover:bg-yellow-700"><i class="fas fa-edit mr-2"></i>Rename Map</button>
-                        <button id="deleteMapBtn" class="px-4 py-2 bg-red-600/80 text-white rounded-lg hover:bg-red-700"><i class="fas fa-trash mr-2"></i>Delete Map</button>
+                        <!-- Map management buttons moved to map_manager.php -->
                     <?php endif; ?>
                 </div>
             </div>
@@ -74,7 +72,7 @@ $is_admin = $_SESSION['is_admin'] ?? false;
             <p class="text-slate-400 mb-6">
                 <?php if ($is_admin): ?>
                     Create a map to start visualizing your network.
-                    <button id="createFirstMapBtn" class="px-6 py-3 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 text-lg">Create Your First Map</button>
+                    <a href="map_manager.php" class="px-6 py-3 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 text-lg">Go to Map Management</a>
                 <?php else: ?>
                     Please contact your administrator to create a map.
                 <?php endif; ?>

@@ -194,66 +194,10 @@ function initMap() {
 
     // Event Listeners Setup
     if (IS_ADMIN) {
-        // Debugging: Check if newMapBtn exists before adding listener
-        console.log('newMapBtn element:', els.newMapBtn);
-        if (els.newMapBtn) {
-            els.newMapBtn.addEventListener('click', MapApp.mapManager.createMap);
-            console.log('Event listener attached to newMapBtn.');
-        } else {
-            console.error('newMapBtn element not found. Cannot attach event listener.');
-        }
-
-        // Rename Map
-        els.renameMapBtn.addEventListener('click', async () => {
-            if (!state.currentMapId) {
-                window.notyf.error('Please select a map to rename.');
-                return;
-            }
-            const currentMap = state.maps.find(m => m.id == state.currentMapId);
-            const newName = prompt(`Rename map "${currentMap.name}":`, currentMap.name);
-            if (newName && newName.trim() !== currentMap.name) {
-                try {
-                    const result = await api.post('update_map', { id: state.currentMapId, updates: { name: newName.trim() } });
-                    if (result.success) {
-                        window.notyf.success(`Map renamed to "${newName.trim()}".`);
-                        await mapManager.loadMaps(); // Reload maps to update selector
-                        els.mapSelector.value = state.currentMapId; // Keep current map selected
-                        els.currentMapName.textContent = newName.trim(); // Update current map name display
-                    } else {
-                        window.notyf.error(result.error || 'Failed to rename map.');
-                    }
-                } catch (error) {
-                    console.error('Error renaming map:', error);
-                    window.notyf.error('An unexpected error occurred while renaming the map.');
-                }
-            } else if (newName === null) {
-                window.notyf.info('Map rename cancelled.');
-            }
-        });
-
-        // Delete Map
-        els.deleteMapBtn.addEventListener('click', async () => {
-            if (!state.currentMapId) {
-                window.notyf.error('Please select a map to delete.');
-                return;
-            }
-            const currentMap = state.maps.find(m => m.id == state.currentMapId);
-            if (confirm(`Are you sure you want to delete the map "${currentMap.name}"? This action cannot be undone and will delete all devices and connections on this map.`)) {
-                try {
-                    const result = await api.post('delete_map', { id: state.currentMapId });
-                    if (result.success) {
-                        window.notyf.success(`Map "${currentMap.name}" deleted.`);
-                        const newFirstMapId = await mapManager.loadMaps(); // Reload maps and get new first map
-                        await mapManager.switchMap(newFirstMapId); // Switch to new first map or show no maps
-                    } else {
-                        window.notyf.error(result.error || 'Failed to delete map.');
-                    }
-                } catch (error) {
-                    console.error('Error deleting map:', error);
-                    window.notyf.error('An unexpected error occurred while deleting the map.');
-                }
-            }
-        });
+        // Map management buttons are now on map_manager.php
+        // els.newMapBtn.addEventListener('click', MapApp.mapManager.createMap);
+        // els.renameMapBtn.addEventListener('click', ...);
+        // els.deleteMapBtn.addEventListener('click', ...);
 
         // Scan Network Button
         els.scanNetworkBtn.addEventListener('click', () => {

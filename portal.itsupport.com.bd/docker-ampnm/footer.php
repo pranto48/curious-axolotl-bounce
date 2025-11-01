@@ -27,6 +27,7 @@
     <script src="assets/js/createdevice.js"></script> <!-- Re-added createdevice.js -->
     <script src="assets/js/editdevice.js"></script> <!-- NEW: Include editdevice.js -->
     <script src="assets/js/profile.js"></script>
+    <script src="assets/js/map_manager.js"></script> <!-- NEW: Include map_manager.js -->
     
     <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -76,6 +77,8 @@
             initEditDevicePage();
         } else if (page === 'profile.php') {
             initProfile();
+        } else if (page === 'map_manager.php') { // NEW: Initialize map_manager.js
+            initMapManager();
         }
     });
     </script>
