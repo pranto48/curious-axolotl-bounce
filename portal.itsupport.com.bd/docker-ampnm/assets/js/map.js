@@ -62,16 +62,10 @@ function initMap() {
         window.cleanup = null;
     };
 
-    console.log('DEBUG: MapApp.ui.els after cacheElements:', MapApp.ui.els); // New log
-    console.log('DEBUG: IS_ADMIN value:', IS_ADMIN); // New log
-
     // Event Listeners Setup
     if (IS_ADMIN) {
-        console.log('DEBUG: Admin mode detected. Attempting to attach map permissions button listener.'); // New log
         if (els.mapPermissionsBtn) { // Ensure button exists before adding listener
-            console.log('DEBUG: mapPermissionsBtn element found for listener attachment:', els.mapPermissionsBtn); // New log
             els.mapPermissionsBtn.addEventListener('click', async () => {
-                console.log('DEBUG: Map Permissions button clicked.'); // This should fire on click
                 if (!state.currentMapId) {
                     window.notyf.error('Please select a map first.');
                     return;
@@ -79,7 +73,7 @@ function initMap() {
                 const currentMap = state.maps.find(m => m.id == state.currentMapId);
                 els.permissionsMapName.textContent = currentMap ? currentMap.name : 'Unknown Map';
                 els.permissionsMapId.value = state.currentMapId;
-                openModal('mapPermissionsModal'); // This should trigger the openModal log
+                openModal('mapPermissionsModal');
                 
                 els.userPermissionsList.innerHTML = '<div class="text-center py-4"><div class="loader mx-auto w-4 h-4"></div><span class="ml-2 text-sm text-slate-400">Loading users...</span></div>';
                 try {

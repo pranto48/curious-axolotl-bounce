@@ -40,15 +40,13 @@ async function createMapSelector(containerId, onChangeCallback) {
  * @param {string} modalId - The ID of the modal element.
  */
 function openModal(modalId) {
-    console.log(`DEBUG: openModal called for ID: ${modalId}`); // New debug log
     const modal = document.getElementById(modalId);
     if (modal) {
-        console.log(`DEBUG: Modal element found for ID: ${modalId}`); // New debug log
         modal.classList.remove('hidden');
         // Use a timeout to ensure the 'hidden' class is removed before adding 'is-open'
         setTimeout(() => modal.classList.add('is-open'), 10);
     } else {
-        console.error(`ERROR: Modal element not found for ID: ${modalId}`); // New debug log
+        console.error(`ERROR: Modal element not found for ID: ${modalId}`);
     }
 }
 
