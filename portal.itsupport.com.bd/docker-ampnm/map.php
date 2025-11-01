@@ -41,8 +41,7 @@ $is_admin = $_SESSION['is_admin'] ?? false;
 
                         <?php if ($is_admin): ?>
                             <div class="pl-2 ml-2 border-l border-slate-700 flex items-center gap-2">
-                                <button id="placeDeviceBtn" class="px-3 py-2 bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600" title="Place Existing Device"><i class="fas fa-download"></i></button>
-                                <button id="addDeviceBtn" class="px-3 py-2 bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600" title="Add New Device"><i class="fas fa-plus"></i></button>
+                                <a href="createdevice.php" id="addDeviceBtn" class="px-3 py-2 bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600" title="Add New Device"><i class="fas fa-plus"></i></a>
                                 <button id="addEdgeBtn" class="px-3 py-2 bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600" title="Add Connection"><i class="fas fa-project-diagram"></i></button>
                                 <button id="exportBtn" class="px-3 py-2 bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600" title="Export Map"><i class="fas fa-file-export"></i></button>
                                 <button id="importBtn" class="px-3 py-2 bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600" title="Import Map"><i class="fas fa-file-import"></i></button>
@@ -84,11 +83,11 @@ $is_admin = $_SESSION['is_admin'] ?? false;
 
     <!-- Modals (Hidden by default, only shown if admin triggers them) -->
     <div id="deviceModal" class="modal-backdrop hidden">
-        <div class="modal-panel bg-slate-800 rounded-lg shadow-xl p-6 w-full max-w-md max-h-[90vh] flex flex-col">
-            <h2 id="modalTitle" class="text-xl font-semibold text-white mb-4">Add Device</h2>
-            <form id="deviceForm" class="flex flex-col flex-grow">
+        <div class="modal-panel bg-slate-800 rounded-lg shadow-xl p-6 w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden">
+            <h2 id="modalTitle" class="text-xl font-semibold text-white mb-4 flex-shrink-0">Edit Device</h2>
+            <form id="deviceForm" class="flex flex-col flex-grow min-h-0">
                 <input type="hidden" id="deviceId" name="id">
-                <div class="flex-grow overflow-y-auto pr-2 -mr-2 space-y-4">
+                <div class="flex-grow overflow-y-auto space-y-4 p-1 -m-1">
                     <div>
                         <label for="deviceName" class="block text-sm font-medium text-slate-400 mb-1">Name</label>
                         <input type="text" id="deviceName" name="name" placeholder="Device Name" class="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2 focus:ring-2 focus:ring-cyan-500" required>
@@ -274,18 +273,7 @@ $is_admin = $_SESSION['is_admin'] ?? false;
     </div>
     
     <!-- Place Device Modal -->
-    <div id="placeDeviceModal" class="modal-backdrop hidden">
-        <div class="modal-panel bg-slate-800 rounded-lg shadow-xl p-6 w-full max-w-lg border border-slate-700">
-            <div class="flex items-center justify-between mb-4">
-                <h2 class="text-xl font-semibold text-white">Place an Existing Device</h2>
-                <button id="closePlaceDeviceModal" class="text-slate-400 hover:text-white text-2xl">&times;</button>
-            </div>
-            <div id="placeDeviceList" class="max-h-96 overflow-y-auto">
-                <!-- Unmapped devices will be listed here -->
-            </div>
-            <div id="placeDeviceLoader" class="text-center py-8 hidden"><div class="loader mx-auto"></div></div>
-        </div>
-    </div>
+    <!-- This modal is no longer needed as per the undo request -->
 
     <!-- Map Permissions Modal -->
     <div id="mapPermissionsModal" class="modal-backdrop hidden">

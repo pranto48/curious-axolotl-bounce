@@ -63,7 +63,7 @@ MapApp.ui = {
         document.getElementById('nameTextSizeLabel').textContent = isAnnotation ? 'Height' : 'Name Text Size';
     },
 
-    openDeviceModal: (deviceId = null, prefill = {}) => {
+    openDeviceModal: (deviceId = null) => { // Removed prefill parameter
         MapApp.ui.els.deviceForm.reset();
         document.getElementById('deviceId').value = '';
         const previewWrapper = document.getElementById('icon_preview_wrapper');
@@ -93,8 +93,7 @@ MapApp.ui = {
             document.getElementById('showLivePing').checked = node.deviceData.show_live_ping;
         } else {
             document.getElementById('modalTitle').textContent = 'Add Item';
-            document.getElementById('deviceName').value = prefill.name || '';
-            document.getElementById('deviceIp').value = prefill.ip || '';
+            // Removed prefill assignments
             // Set default values for new devices
             document.getElementById('deviceType').value = 'server';
             document.getElementById('iconSize').value = 50;

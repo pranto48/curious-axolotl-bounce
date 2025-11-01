@@ -412,13 +412,6 @@ switch ($action) {
         echo json_encode($devices);
         break;
 
-    case 'get_unmapped_devices': // NEW ACTION
-        $stmt = $pdo->prepare("SELECT id, name, ip, type FROM devices WHERE user_id = ? AND map_id IS NULL ORDER BY name ASC");
-        $stmt->execute([$current_user_id]);
-        $unmappedDevices = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        echo json_encode($unmappedDevices);
-        break;
-
     case 'create_device':
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // License check for max devices
