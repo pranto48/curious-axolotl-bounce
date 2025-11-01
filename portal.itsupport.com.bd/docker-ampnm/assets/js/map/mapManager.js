@@ -33,7 +33,7 @@ MapApp.mapManager = {
                 option.value = map.id; 
                 option.textContent = map.name; 
                 MapApp.ui.els.mapSelector.appendChild(option); 
-                if (map.is_default) {
+                if (map.is_default == 1) { // Changed to explicitly check for 1
                     defaultMapId = map.id;
                 }
             });

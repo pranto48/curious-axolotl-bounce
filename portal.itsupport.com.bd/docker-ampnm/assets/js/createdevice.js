@@ -50,7 +50,7 @@ function initCreateDevice() {
             if (maps.length > 0) {
                 maps.forEach(map => {
                     optionsHtml += `<option value="${map.id}">${map.name}</option>`;
-                    if (map.is_default) {
+                    if (map.is_default == 1) { // Changed to explicitly check for 1
                         defaultMapId = map.id;
                     }
                 });
