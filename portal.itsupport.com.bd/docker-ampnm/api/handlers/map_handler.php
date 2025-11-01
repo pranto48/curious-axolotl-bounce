@@ -15,13 +15,13 @@ switch ($action) {
     case 'get_maps':
         if ($_SESSION['role'] === 'admin') {
             // Admins can see all maps
-            $stmt = $pdo->prepare("SELECT m.id, m.name, m.type, m.background_color, m.background_image_url, m.updated_at as lastModified, (SELECT COUNT(*) FROM devices WHERE map_id = m.id AND user_id = ?) as deviceCount FROM maps m ORDER BY m.created_at ASC");
+            $stmt = $pdo->prepare("SELECT m.id, m.name, m.type, m.background_color, m.background_image_url, m.is_default, m.updated_at as lastModified, (SELECT COUNT(*) FROM devices WHERE map_id = m.id AND user_id = ?) as deviceCount FROM maps m ORDER BY m.created_at ASC");
             $stmt->execute([$current_user_id]); // Still pass user_id for deviceCount subquery
         } else {
             // Basic users only see maps they have permission for
             $stmt = $pdo->prepare("
                 SELECT 
-                    m.id, m.name, m.type, m.background_color, m.background_image_url, m.updated_at as lastModified, 
+                    m.id, m.name, m.type, m.background_color, m.background_image_url, m.is_default, m.updated_at as lastModified, 
                     (SELECT COUNT(*) FROM devices WHERE map_id = m.id AND user_id = ?) as deviceCount 
                 FROM maps m
                 JOIN user_map_permissions ump ON m.id = ump.map_id
@@ -38,14 +38,28 @@ switch ($action) {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $name = $input['name'] ?? ''; $type = $input['type'] ?? 'lan';
             if (empty($name)) { http_response_code(400); echo json_encode(['error' => 'Name is required']); exit; }
-            $stmt = $pdo->prepare("INSERT INTO maps (user_id, name, type) VALUES (?, ?, ?)"); $stmt->execute([$current_user_id, $name, $type]);
-            $lastId = $pdo->lastInsertId();
-            // Automatically grant admin user permission to the new map
-            $stmt = $pdo->prepare("INSERT INTO user_map_permissions (user_id, map_id) VALUES (?, ?)");
-            $stmt->execute([$current_user_id, $lastId]);
+            
+            try {
+                $pdo->beginTransaction();
+                $stmt = $pdo->prepare("INSERT INTO maps (user_id, name, type) VALUES (?, ?, ?)"); 
+                $stmt->execute([$current_user_id, $name, $type]);
+                $lastId = $pdo->lastInsertId();
+                
+                // Automatically grant the creating user permission to the new map
+                $stmt = $pdo->prepare("INSERT INTO user_map_permissions (user_id, map_id) VALUES (?, ?)");
+                $stmt->execute([$current_user_id, $lastId]);
+                $pdo->commit();
 
-            $stmt = $pdo->prepare("SELECT id, name, type, background_color, background_image_url, updated_at as lastModified, 0 as deviceCount FROM maps WHERE id = ? AND user_id = ?"); $stmt->execute([$lastId, $current_user_id]);
-            $map = $stmt->fetch(PDO::FETCH_ASSOC); echo json_encode($map);
+                $stmt = $pdo->prepare("SELECT id, name, type, background_color, background_image_url, is_default, updated_at as lastModified, 0 as deviceCount FROM maps WHERE id = ? AND user_id = ?"); 
+                $stmt->execute([$lastId, $current_user_id]);
+                $map = $stmt->fetch(PDO::FETCH_ASSOC); 
+                
+                echo json_encode(['success' => true, 'message' => 'Map created successfully.', 'map' => $map]);
+            } catch (Exception $e) {
+                $pdo->rollBack();
+                http_response_code(500);
+                echo json_encode(['success' => false, 'error' => 'Failed to create map: ' . $e->getMessage()]);
+            }
         }
         break;
 

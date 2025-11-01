@@ -4,11 +4,20 @@ MapApp.mapManager = {
     createMap: async () => {
         const name = prompt("Enter a name for the new map:");
         if (name) { 
-            const newMap = await MapApp.api.post('create_map', { name }); 
-            await MapApp.mapManager.loadMaps(); 
-            MapApp.ui.els.mapSelector.value = newMap.id; 
-            await MapApp.mapManager.switchMap(newMap.id); 
-            window.notyf.success(`Map "${name}" created.`);
+            try {
+                const response = await MapApp.api.post('create_map', { name }); 
+                if (response.success) {
+                    await MapApp.mapManager.loadMaps(); 
+                    MapApp.ui.els.mapSelector.value = response.map.id; 
+                    await MapApp.mapManager.switchMap(response.map.id); 
+                    window.notyf.success(response.message);
+                } else {
+                    window.notyf.error(response.error || 'Failed to create map.');
+                }
+            } catch (error) {
+                console.error("Error creating map:", error);
+                window.notyf.error('An unexpected error occurred while creating the map.');
+            }
         }
     },
 
@@ -16,16 +25,21 @@ MapApp.mapManager = {
         const maps = await MapApp.api.get('get_maps');
         MapApp.state.maps = maps;
         MapApp.ui.els.mapSelector.innerHTML = '';
+        let defaultMapId = null;
+
         if (maps.length > 0) {
             maps.forEach(map => { 
                 const option = document.createElement('option'); 
                 option.value = map.id; 
                 option.textContent = map.name; 
                 MapApp.ui.els.mapSelector.appendChild(option); 
+                if (map.is_default) {
+                    defaultMapId = map.id;
+                }
             });
             MapApp.ui.els.mapContainer.classList.remove('hidden'); 
             MapApp.ui.els.noMapsContainer.classList.add('hidden'); 
-            return maps[0].id;
+            return defaultMapId || maps[0].id; // Return default map ID, or first map if no default
         } else { 
             MapApp.ui.els.mapContainer.classList.add('hidden'); 
             MapApp.ui.els.noMapsContainer.classList.remove('hidden'); 

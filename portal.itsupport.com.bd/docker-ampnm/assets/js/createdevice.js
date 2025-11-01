@@ -44,8 +44,21 @@ function initCreateDevice() {
     const populateMapSelector = async () => {
         try {
             const maps = await api.get('get_maps');
-            deviceMapSelect.innerHTML = '<option value="">-- No Map --</option>' + 
-                maps.map(map => `<option value="${map.id}">${map.name}</option>`).join('');
+            let defaultMapId = null;
+            let optionsHtml = '<option value="">-- No Map --</option>';
+
+            if (maps.length > 0) {
+                maps.forEach(map => {
+                    optionsHtml += `<option value="${map.id}">${map.name}</option>`;
+                    if (map.is_default) {
+                        defaultMapId = map.id;
+                    }
+                });
+            }
+            deviceMapSelect.innerHTML = optionsHtml;
+            if (defaultMapId) {
+                deviceMapSelect.value = defaultMapId;
+            }
         } catch (error) {
             console.error('Failed to load maps:', error);
             window.notyf.error('Failed to load maps for assignment.');
