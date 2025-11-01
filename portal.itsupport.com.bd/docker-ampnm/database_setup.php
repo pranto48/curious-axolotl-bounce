@@ -226,6 +226,16 @@ try {
             `setting_value` TEXT NULL,
             `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
+
+        // NEW TABLE FOR USER MAP PERMISSIONS
+        "CREATE TABLE IF NOT EXISTS `user_map_permissions` (
+            `user_id` INT(6) UNSIGNED NOT NULL,
+            `map_id` INT(6) UNSIGNED NOT NULL,
+            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (`user_id`, `map_id`),
+            FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+            FOREIGN KEY (`map_id`) REFERENCES `maps`(`id`) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;"
     ];
 

@@ -49,6 +49,53 @@ switch ($action) {
         }
         break;
 
+    case 'update_user':
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $id = $input['id'] ?? null;
+            $username = $input['username'] ?? '';
+            $password = $input['password'] ?? null; // Optional, can be empty
+            $role = $input['role'] ?? 'basic';
+
+            if (!$id || empty($username)) {
+                http_response_code(400);
+                echo json_encode(['error' => 'User ID and username are required.']);
+                exit;
+            }
+
+            // Sanitize role input
+            if (!in_array($role, ['admin', 'basic'])) {
+                $role = 'basic';
+            }
+
+            // Prevent changing the primary admin's role or deleting them
+            $stmt = $pdo->prepare("SELECT username FROM users WHERE id = ?");
+            $stmt->execute([$id]);
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($user && $user['username'] === 'admin' && $role !== 'admin') {
+                http_response_code(403);
+                echo json_encode(['error' => 'Cannot change the role of the primary admin user.']);
+                exit;
+            }
+
+            $sql = "UPDATE users SET username = ?, role = ?, updated_at = CURRENT_TIMESTAMP";
+            $params = [$username, $role];
+
+            if (!empty($password)) {
+                $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+                $sql .= ", password = ?";
+                $params[] = $hashed_password;
+            }
+
+            $sql .= " WHERE id = ?";
+            $params[] = $id;
+
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($params);
+            
+            echo json_encode(['success' => true, 'message' => 'User updated successfully.']);
+        }
+        break;
+
     case 'delete_user':
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $id = $input['id'] ?? null;

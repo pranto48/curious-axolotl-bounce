@@ -4,8 +4,19 @@ function initUsers() {
     const usersLoader = document.getElementById('usersLoader');
     const createUserForm = document.getElementById('createUserForm');
 
+    // Edit User Modal elements
+    const editUserModal = document.getElementById('editUserModal');
+    const editUserForm = document.getElementById('editUserForm');
+    const editUserId = document.getElementById('edit_user_id');
+    const editUsername = document.getElementById('edit_username');
+    const editPassword = document.getElementById('edit_password');
+    const editRole = document.getElementById('edit_role');
+    const mapPermissionsList = document.getElementById('mapPermissionsList');
+    const cancelEditUserBtn = document.getElementById('cancelEditUserBtn');
+    const saveEditUserBtn = document.getElementById('saveEditUserBtn');
+
     const api = {
-        get: (action) => fetch(`${API_URL}?action=${action}`).then(res => res.json()),
+        get: (action, params = {}) => fetch(`${API_URL}?action=${action}&${new URLSearchParams(params)}`).then(res => res.json()),
         post: (action, body) => fetch(`${API_URL}?action=${action}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -32,14 +43,39 @@ function initUsers() {
                     <td class="px-6 py-4 whitespace-nowrap">${renderRoleBadge(user.role)}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-slate-400">${new Date(user.created_at).toLocaleString()}</td>
                     <td class="px-6 py-4 whitespace-nowrap">
+                        <button class="edit-user-btn text-yellow-400 hover:text-yellow-300 mr-3" data-id="${user.id}" data-username="${user.username}" data-role="${user.role}"><i class="fas fa-edit mr-2"></i>Edit</button>
                         ${user.username !== 'admin' ? `<button class="delete-user-btn text-red-500 hover:text-red-400" data-id="${user.id}" data-username="${user.username}"><i class="fas fa-trash mr-2"></i>Delete</button>` : '<span class="text-slate-500">Cannot delete primary admin</span>'}
                     </td>
                 </tr>
             `).join('');
         } catch (error) {
             console.error('Failed to load users:', error);
+            window.notyf.error('Failed to load users.');
         } finally {
             usersLoader.classList.add('hidden');
+        }
+    };
+
+    const loadMapPermissions = async (userId) => {
+        mapPermissionsList.innerHTML = '<div class="text-center py-4"><div class="loader mx-auto w-4 h-4"></div><span class="ml-2 text-sm text-slate-400">Loading maps...</span></div>';
+        try {
+            const { all_maps, user_map_ids } = await api.get('get_user_map_permissions', { user_id: userId });
+            
+            if (all_maps.length === 0) {
+                mapPermissionsList.innerHTML = '<p class="text-sm text-slate-500">No maps available to assign.</p>';
+                return;
+            }
+
+            mapPermissionsList.innerHTML = all_maps.map(map => `
+                <label class="flex items-center text-sm font-medium text-slate-400">
+                    <input type="checkbox" name="map_id[]" value="${map.id}" class="h-4 w-4 rounded border-slate-500 bg-slate-700 text-cyan-600 focus:ring-cyan-500" ${user_map_ids.includes(map.id.toString()) ? 'checked' : ''}>
+                    <span class="ml-2">${map.name}</span>
+                </label>
+            `).join('');
+
+        } catch (error) {
+            console.error('Failed to load map permissions:', error);
+            mapPermissionsList.innerHTML = '<p class="text-sm text-red-400">Failed to load map permissions.</p>';
         }
     };
 
@@ -73,9 +109,11 @@ function initUsers() {
     });
 
     usersTableBody.addEventListener('click', async (e) => {
-        const button = e.target.closest('.delete-user-btn');
-        if (button) {
-            const { id, username } = button.dataset;
+        const deleteButton = e.target.closest('.delete-user-btn');
+        const editButton = e.target.closest('.edit-user-btn');
+
+        if (deleteButton) {
+            const { id, username } = deleteButton.dataset;
             if (confirm(`Are you sure you want to delete user "${username}"?`)) {
                 const result = await api.post('delete_user', { id });
                 if (result.success) {
@@ -85,8 +123,58 @@ function initUsers() {
                     window.notyf.error(`Error: ${result.error}`);
                 }
             }
+        } else if (editButton) {
+            const { id, username, role } = editButton.dataset;
+            editUserId.value = id;
+            editUsername.value = username;
+            editRole.value = role;
+            editPassword.value = ''; // Clear password field for security
+            
+            await loadMapPermissions(id);
+            openModal('editUserModal');
         }
     });
+
+    editUserForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const userId = editUserId.value;
+        const username = editUsername.value;
+        const password = editPassword.value; // Can be empty if not changing
+        const role = editRole.value;
+
+        const selectedMapIds = Array.from(mapPermissionsList.querySelectorAll('input[type="checkbox"]:checked'))
+                                    .map(checkbox => checkbox.value);
+
+        const button = saveEditUserBtn;
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Saving...';
+
+        try {
+            // Update user details
+            const userUpdateResult = await api.post('update_user', { id: userId, username, password, role });
+            if (!userUpdateResult.success) {
+                throw new Error(userUpdateResult.error || 'Failed to update user details.');
+            }
+
+            // Update map permissions
+            const mapPermissionsUpdateResult = await api.post('update_user_map_permissions', { user_id: userId, map_ids: selectedMapIds });
+            if (!mapPermissionsUpdateResult.success) {
+                throw new Error(mapPermissionsUpdateResult.error || 'Failed to update map permissions.');
+            }
+
+            window.notyf.success('User and permissions updated successfully.');
+            closeModal('editUserModal');
+            await loadUsers(); // Reload user list to reflect changes
+        } catch (error) {
+            window.notyf.error(`Error: ${error.message}`);
+            console.error(error);
+        } finally {
+            button.disabled = false;
+            button.innerHTML = 'Save Changes';
+        }
+    });
+
+    cancelEditUserBtn.addEventListener('click', () => closeModal('editUserModal'));
 
     loadUsers();
 }
