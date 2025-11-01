@@ -18,28 +18,6 @@ function initMap() {
         deviceManager
     } = MapApp;
 
-    // Add new elements to cache
-    els.mapSettingsBtn = document.getElementById('mapSettingsBtn');
-    els.mapSettingsModal = document.getElementById('mapSettingsModal');
-    els.mapSettingsForm = document.getElementById('mapSettingsForm');
-    els.cancelMapSettingsBtn = document.getElementById('cancelMapSettingsBtn');
-    els.resetMapBgBtn = document.getElementById('resetMapBgBtn');
-    els.mapBgUpload = document.getElementById('mapBgUpload');
-    els.placeDeviceBtn = document.getElementById('placeDeviceBtn');
-    els.placeDeviceModal = document.getElementById('placeDeviceModal');
-    els.closePlaceDeviceModal = document.getElementById('closePlaceDeviceModal');
-    els.placeDeviceList = document.getElementById('placeDeviceList');
-    els.placeDeviceLoader = document.getElementById('placeDeviceLoader');
-    els.mapPermissionsBtn = document.getElementById('mapPermissionsBtn'); // New element
-    els.mapPermissionsModal = document.getElementById('mapPermissionsModal'); // New element
-    els.mapPermissionsForm = document.getElementById('mapPermissionsForm'); // New element
-    els.permissionsMapName = document.getElementById('permissionsMapName'); // New element
-    els.permissionsMapId = document.getElementById('permissionsMapId'); // New element
-    els.userPermissionsList = document.getElementById('userPermissionsList'); // New element
-    els.cancelMapPermissionsBtn = document.getElementById('cancelMapPermissionsBtn'); // New element
-    els.saveMapPermissionsBtn = document.getElementById('saveMapPermissionsBtn'); // New element
-
-
     // Check if the user is admin (set in footer.php)
     const IS_ADMIN = window.isAdmin;
 
@@ -60,6 +38,158 @@ function initMap() {
             state.network = null;
         }
         window.cleanup = null;
+    };
+
+    // --- Fullscreen Functionality ---
+    const toggleFullscreen = () => {
+        if (!document.fullscreenElement) {
+            els.mapWrapper.requestFullscreen().catch(err => {
+                window.notyf.error(`Error attempting to enable fullscreen mode: ${err.message} (${err.name})`);
+            });
+        } else {
+            document.exitFullscreen();
+        }
+    };
+    els.fullscreenBtn.addEventListener('click', toggleFullscreen);
+
+    // --- Map Settings Functionality ---
+    const openMapSettingsModal = () => {
+        if (!state.currentMapId) {
+            window.notyf.error('Please select a map first.');
+            return;
+        }
+        const currentMap = state.maps.find(m => m.id == state.currentMapId);
+        if (currentMap) {
+            els.mapBgColor.value = currentMap.background_color || '#1e293b';
+            els.mapBgColorHex.value = currentMap.background_color || '#1e293b';
+            els.mapBgImageUrl.value = currentMap.background_image_url || '';
+            els.mapBgUpload.value = ''; // Clear file input
+            els.mapBgUploadLoader.classList.add('hidden');
+        }
+        openModal('mapSettingsModal');
+    };
+    if (IS_ADMIN) {
+        els.mapSettingsBtn.addEventListener('click', openMapSettingsModal);
+
+        // Sync color picker and hex input
+        els.mapBgColor.addEventListener('input', (e) => {
+            els.mapBgColorHex.value = e.target.value;
+        });
+        els.mapBgColorHex.addEventListener('input', (e) => {
+            els.mapBgColor.value = e.target.value;
+        });
+
+        // Preview uploaded image (not actually uploading yet)
+        els.mapBgUpload.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    // Temporarily set the image URL input to the data URL for preview
+                    els.mapBgImageUrl.value = event.target.result;
+                    // Apply to map immediately for preview
+                    const mapEl = document.getElementById('network-map');
+                    mapEl.style.backgroundImage = `url(${event.target.result})`;
+                    mapEl.style.backgroundSize = 'cover';
+                    mapEl.style.backgroundPosition = 'center';
+                };
+                reader.readAsDataURL(file);
+            } else {
+                // If no file, revert to current map's image or none
+                const currentMap = state.maps.find(m => m.id == state.currentMapId);
+                els.mapBgImageUrl.value = currentMap.background_image_url || '';
+                const mapEl = document.getElementById('network-map');
+                mapEl.style.backgroundImage = currentMap.background_image_url ? `url(${currentMap.background_image_url})` : '';
+            }
+        });
+
+        els.mapSettingsForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const mapId = state.currentMapId;
+            const backgroundColor = els.mapBgColorHex.value;
+            let backgroundImageURL = els.mapBgImageUrl.value;
+
+            els.mapSettingsForm.querySelector('button[type="submit"]').disabled = true;
+            els.mapSettingsForm.querySelector('button[type="submit"]').innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Saving...';
+
+            try {
+                if (els.mapBgUpload.files.length > 0) {
+                    els.mapBgUploadLoader.classList.remove('hidden');
+                    const uploadResult = await uploadMapBackground(mapId, els.mapBgUpload.files[0]);
+                    if (uploadResult.success) {
+                        backgroundImageURL = uploadResult.url;
+                        window.notyf.success('Background image uploaded.');
+                    } else {
+                        throw new Error(uploadResult.error || 'Failed to upload background image.');
+                    }
+                }
+
+                const result = await api.post('update_map', {
+                    id: mapId,
+                    updates: {
+                        background_color: backgroundColor,
+                        background_image_url: backgroundImageURL
+                    }
+                });
+
+                if (result.success) {
+                    window.notyf.success('Map settings updated successfully.');
+                    closeModal('mapSettingsModal');
+                    mapManager.switchMap(mapId); // Reload map to apply changes
+                } else {
+                    throw new Error(result.error || 'Failed to update map settings.');
+                }
+            } catch (error) {
+                window.notyf.error(error.message || 'An unexpected error occurred while saving map settings.');
+                console.error('Map settings save error:', error);
+            } finally {
+                els.mapSettingsForm.querySelector('button[type="submit"]').disabled = false;
+                els.mapSettingsForm.querySelector('button[type="submit"]').innerHTML = 'Save Changes';
+                els.mapBgUploadLoader.classList.add('hidden');
+            }
+        });
+
+        els.resetMapBgBtn.addEventListener('click', async () => {
+            if (!confirm('Are you sure you want to reset map background to default?')) return;
+            try {
+                await api.post('update_map', {
+                    id: state.currentMapId,
+                    updates: {
+                        background_color: null,
+                        background_image_url: null
+                    }
+                });
+                window.notyf.success('Map background reset to default.');
+                closeModal('mapSettingsModal');
+                mapManager.switchMap(state.currentMapId); // Reload map
+            } catch (error) {
+                window.notyf.error('Failed to reset map background.');
+                console.error('Reset map background error:', error);
+            }
+        });
+
+        els.cancelMapSettingsBtn.addEventListener('click', () => {
+            closeModal('mapSettingsModal');
+            mapManager.switchMap(state.currentMapId); // Revert any temporary preview changes
+        });
+    }
+
+    const uploadMapBackground = async (mapId, file) => {
+        const formData = new FormData();
+        formData.append('map_id', mapId);
+        formData.append('backgroundFile', file);
+
+        try {
+            const response = await fetch(`${MapApp.config.API_URL}?action=upload_map_background`, {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.json();
+            return result;
+        } catch (error) {
+            console.error('Map background upload API error:', error);
+            return { success: false, error: 'Network error during upload.' };
+        }
     };
 
     // Event Listeners Setup

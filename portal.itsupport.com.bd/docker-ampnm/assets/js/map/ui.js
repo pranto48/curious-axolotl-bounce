@@ -50,6 +50,17 @@ MapApp.ui = {
             userPermissionsList: document.getElementById('userPermissionsList'),
             cancelMapPermissionsBtn: document.getElementById('cancelMapPermissionsBtn'),
             saveMapPermissionsBtn: document.getElementById('saveMapPermissionsBtn'),
+            // New map settings elements
+            mapSettingsBtn: document.getElementById('mapSettingsBtn'),
+            mapSettingsModal: document.getElementById('mapSettingsModal'),
+            mapSettingsForm: document.getElementById('mapSettingsForm'),
+            cancelMapSettingsBtn: document.getElementById('cancelMapSettingsBtn'),
+            resetMapBgBtn: document.getElementById('resetMapBgBtn'),
+            mapBgColor: document.getElementById('mapBgColor'),
+            mapBgColorHex: document.getElementById('mapBgColorHex'),
+            mapBgImageUrl: document.getElementById('mapBgImageUrl'),
+            mapBgUpload: document.getElementById('mapBgUpload'),
+            mapBgUploadLoader: document.getElementById('mapBgUploadLoader'),
         };
     },
 

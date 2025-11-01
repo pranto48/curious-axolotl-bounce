@@ -248,7 +248,7 @@ $is_admin = $_SESSION['is_admin'] ?? false;
                         <label for="mapBgColor" class="block text-sm font-medium text-slate-400 mb-1">Background Color</label>
                         <div class="flex items-center gap-2">
                             <input type="color" id="mapBgColor" name="background_color" class="p-1 h-10 w-14 block bg-slate-900 border border-slate-600 cursor-pointer rounded-lg" value="#1e293b">
-                            <input type="text" id="mapBgColorHex" class="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2 focus:ring-2 focus:ring-cyan-500">
+                            <input type="text" id="mapBgColorHex" name="background_color_hex" class="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2 focus:ring-2 focus:ring-cyan-500" value="#1e293b">
                         </div>
                     </div>
                     <div>

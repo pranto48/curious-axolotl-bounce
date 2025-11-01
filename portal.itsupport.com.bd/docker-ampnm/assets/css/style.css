@@ -87,8 +87,27 @@ button:hover, a.hoverable:hover {
 /* Map specific styles */
 #network-map-wrapper { position: relative; }
 #network-map { height: 75vh; background-color: #1e293b; border: 1px solid #334155; border-radius: 0.5rem; }
-#network-map-wrapper:fullscreen #network-map { height: 100vh; border-radius: 0; border: 0; }
+
+/* Fullscreen styles for the wrapper itself */
+#network-map-wrapper:fullscreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 9999; /* Ensure it's on top */
+    background-color: #0f172a; /* Match body background */
+    border-radius: 0;
+    border: 0;
+}
+
+#network-map-wrapper:fullscreen #network-map { 
+    height: 100%; /* Take full height of the fullscreen wrapper */
+    border-radius: 0; 
+    border: 0; 
+}
 #network-map-wrapper:fullscreen #map-controls { display: none; }
+
 
 .vis-tooltip {
     position: absolute; visibility: hidden; padding: 5px; white-space: nowrap;
