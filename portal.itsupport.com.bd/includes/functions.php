@@ -434,6 +434,67 @@ function adminResetCustomerPassword($customer_id, $new_password) {
 // --- Basic HTML Header/Footer for the portal ---
 function portal_header($title = "IT Support BD Portal") {
     $current_page = basename($_SERVER['PHP_SELF']);
+
+    // Define the menu structure for the portal
+    $portal_menu_items = [
+        [
+            'label' => 'Products',
+            'icon' => 'fas fa-box-open',
+            'link' => 'products.php',
+            'logged_in_only' => false,
+        ],
+        [
+            'label' => 'Dashboard',
+            'icon' => 'fas fa-tachometer-alt',
+            'link' => 'dashboard.php',
+            'logged_in_only' => true,
+        ],
+        [
+            'label' => 'Support',
+            'icon' => 'fas fa-headset',
+            'link' => 'support.php',
+            'logged_in_only' => true,
+        ],
+        [
+            'label' => 'Profile',
+            'icon' => 'fas fa-user-circle',
+            'link' => 'profile.php',
+            'logged_in_only' => true,
+        ],
+        [
+            'label' => 'Cart',
+            'icon' => 'fas fa-shopping-cart',
+            'link' => 'cart.php',
+            'logged_in_only' => true,
+        ],
+        [
+            'label' => 'Login',
+            'icon' => 'fas fa-sign-in-alt',
+            'link' => 'login.php',
+            'logged_in_only' => false,
+            'show_if_logged_in' => false, // Only show if NOT logged in
+        ],
+        [
+            'label' => 'Register',
+            'icon' => 'fas fa-user-plus',
+            'link' => 'registration.php',
+            'logged_in_only' => false,
+            'show_if_logged_in' => false, // Only show if NOT logged in
+        ],
+        [
+            'label' => 'Logout',
+            'icon' => 'fas fa-sign-out-alt',
+            'link' => 'logout.php',
+            'logged_in_only' => true,
+            'show_if_logged_in' => true, // Only show if logged in
+        ],
+    ];
+
+    // Function to check if a link is active
+    function is_portal_active($link, $current_page) {
+        return $link === $current_page || ($current_page === 'index.php' && $link === '/');
+    }
+
     echo '<!DOCTYPE html>
     <html lang="en">
     <head>
@@ -446,40 +507,84 @@ function portal_header($title = "IT Support BD Portal") {
     </head>
     <body class="flex flex-col min-h-screen">
         <nav class="glass-navbar py-4 shadow-lg sticky top-0 z-50">
-            <div class="container mx-auto px-4 flex flex-col md:flex-row justify-between items-center">
-                <a href="index.php" class="text-2xl font-bold text-primary-light mb-3 md:mb-0">
+            <div class="container mx-auto px-4 flex items-center justify-between">
+                <a href="index.php" class="text-2xl font-bold text-primary-light">
                     <i class="fas fa-shield-alt mr-2 text-blue-400"></i>IT Support BD Portal
                 </a>
-                <div class="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-4">';
-    
-    $nav_links = [
-        'products.php' => 'Products',
-        'dashboard.php' => 'Dashboard',
-        'support.php' => '<i class="fas fa-headset mr-1"></i> Support',
-        'profile.php' => '<i class="fas fa-user-circle mr-1"></i> Profile',
-        'cart.php' => '<i class="fas fa-shopping-cart mr-1"></i> Cart',
-    ];
 
-    if (isCustomerLoggedIn()) {
-        foreach ($nav_links as $href => $text) {
-            $active_class = ($current_page === $href) ? 'active' : '';
-            echo '<a href="' . htmlspecialchars($href) . '" class="nav-link ' . $active_class . '">' . $text . '</a>';
+                <!-- Desktop Menu -->
+                <div class="hidden md:block">
+                    <div id="main-nav" class="flex items-baseline space-x-4">';
+    
+    foreach ($portal_menu_items as $item) {
+        $show_item = false;
+        if ($item['logged_in_only'] && isCustomerLoggedIn()) {
+            $show_item = true;
+        } elseif (!$item['logged_in_only'] && !isset($item['show_if_logged_in'])) {
+            $show_item = true;
+        } elseif (!$item['logged_in_only'] && isset($item['show_if_logged_in']) && $item['show_if_logged_in'] === false && !isCustomerLoggedIn()) {
+            $show_item = true;
         }
-        echo '<a href="logout.php" class="nav-link"><i class="fas fa-sign-out-alt mr-1"></i> Logout (' . htmlspecialchars($_SESSION['customer_email']) . ')</a>';
-    } else {
-        $public_nav_links = [
-            'products.php' => 'Products',
-            'login.php' => 'Login',
-            'registration.php' => 'Register',
-        ];
-        foreach ($public_nav_links as $href => $text) {
-            $active_class = ($current_page === $href) ? 'active' : '';
-            echo '<a href="' . htmlspecialchars($href) . '" class="nav-link ' . $active_class . '">' . $text . '</a>';
+
+        if ($show_item) {
+            $active_class = is_portal_active($item['link'], $current_page) ? 'active' : '';
+            echo '<a href="' . htmlspecialchars($item['link']) . '" class="nav-link ' . $active_class . '">';
+            if (isset($item['icon'])) {
+                echo '<i class="' . $item['icon'] . ' mr-1"></i> ';
+            }
+            echo '<span>' . htmlspecialchars($item['label']) . '</span>';
+            if ($item['label'] === 'Logout' && isCustomerLoggedIn()) {
+                echo ' (' . htmlspecialchars($_SESSION['customer_email']) . ')';
+            }
+            echo '</a>';
         }
     }
     echo '</div>
+                </div>
+
+                <!-- Mobile Menu Button -->
+                <div class="md:hidden flex items-center">
+                    <button id="mobile-menu-button" class="text-slate-300 hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 p-2 rounded-md">
+                        <i class="fas fa-bars text-xl"></i>
+                    </button>
+                </div>
             </div>
         </nav>
+
+        <!-- Mobile Menu (Hidden by default) -->
+        <div id="mobile-menu" class="md:hidden hidden fixed inset-0 bg-gray-900 bg-opacity-95 z-40 overflow-y-auto">
+            <div class="flex justify-end p-4">
+                <button id="close-mobile-menu-button" class="text-slate-300 hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 p-2 rounded-md">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">';
+    
+    foreach ($portal_menu_items as $item) {
+        $show_item = false;
+        if ($item['logged_in_only'] && isCustomerLoggedIn()) {
+            $show_item = true;
+        } elseif (!$item['logged_in_only'] && !isset($item['show_if_logged_in'])) {
+            $show_item = true;
+        } elseif (!$item['logged_in_only'] && isset($item['show_if_logged_in']) && $item['show_if_logged_in'] === false && !isCustomerLoggedIn()) {
+            $show_item = true;
+        }
+
+        if ($show_item) {
+            $active_class = is_portal_active($item['link'], $current_page) ? 'active' : '';
+            echo '<a href="' . htmlspecialchars($item['link']) . '" class="block px-3 py-2 rounded-md text-base font-medium text-slate-300 hover:bg-gray-700 hover:text-white ' . $active_class . '">';
+            if (isset($item['icon'])) {
+                echo '<i class="' . $item['icon'] . ' mr-2"></i> ';
+            }
+            echo '<span>' . htmlspecialchars($item['label']) . '</span>';
+            if ($item['label'] === 'Logout' && isCustomerLoggedIn()) {
+                echo ' (' . htmlspecialchars($_SESSION['customer_email']) . ')';
+            }
+            echo '</a>';
+        }
+    }
+    echo '</div>
+        </div>
         <main class="container mx-auto py-8 flex-grow page-content">';
 }
 
@@ -488,6 +593,27 @@ function portal_footer() {
         <footer class="text-center py-6 text-gray-300 text-sm mt-auto">
             <p>&copy; ' . date("Y") . ' IT Support BD. All rights reserved.</p>
         </footer>
+        <script>
+            document.addEventListener("DOMContentLoaded", function() {
+                const mobileMenuButton = document.getElementById("mobile-menu-button");
+                const closeMobileMenuButton = document.getElementById("close-mobile-menu-button");
+                const mobileMenu = document.getElementById("mobile-menu");
+
+                if (mobileMenuButton) {
+                    mobileMenuButton.addEventListener("click", () => {
+                        mobileMenu.classList.remove("hidden");
+                        document.body.style.overflow = "hidden"; // Prevent scrolling background
+                    });
+                }
+
+                if (closeMobileMenuButton) {
+                    closeMobileMenuButton.addEventListener("click", () => {
+                        mobileMenu.classList.add("hidden");
+                        document.body.style.overflow = ""; // Restore scrolling
+                    });
+                }
+            });
+        </script>
     </body>
     </html>';
 }
