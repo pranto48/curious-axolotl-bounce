@@ -139,14 +139,7 @@ function initMap() {
             }
         });
 
-        // Add Device Button (opens modal for new device)
-        els.addDeviceBtn.addEventListener('click', () => {
-            if (!state.currentMapId) {
-                window.notyf.error('Please select a map first to add a device.');
-                return;
-            }
-            MapApp.ui.openDeviceModal(null, { map_id: state.currentMapId }); // Pass current map ID
-        });
+        // Removed els.addDeviceBtn.addEventListener as it now links to createdevice.php
 
         // Place Existing Device Button
         els.placeDeviceBtn.addEventListener('click', async () => {
@@ -208,7 +201,7 @@ function initMap() {
             }
         };
 
-        // Device Form Submission (for both new and existing devices)
+        // Device Form Submission (for editing existing devices only)
         els.deviceForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const formData = new FormData(els.deviceForm);
@@ -233,25 +226,12 @@ function initMap() {
                 }
             }
 
-            // Add current map_id and default coordinates for new devices
-            if (!id && state.currentMapId) {
-                data.map_id = state.currentMapId;
-                data.x = Math.floor(Math.random() * 500) + 50; // Default X
-                data.y = Math.floor(Math.random() * 300) + 50; // Default Y
-            }
-
             els.saveBtn.disabled = true;
             els.saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Saving...';
 
             try {
-                let result;
-                if (id) {
-                    result = await api.post('update_device', { id, updates: data });
-                    window.notyf.success('Device updated.');
-                } else {
-                    result = await api.post('create_device', data);
-                    window.notyf.success('Device created successfully!');
-                }
+                await api.post('update_device', { id, updates: data });
+                window.notyf.success('Device updated.');
                 
                 closeModal('deviceModal');
                 mapManager.switchMap(state.currentMapId); // Refresh map to show changes

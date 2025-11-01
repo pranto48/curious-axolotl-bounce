@@ -19,13 +19,13 @@ MapApp.ui = {
             scanNetworkBtn: document.getElementById('scanNetworkBtn'),
             refreshStatusBtn: document.getElementById('refreshStatusBtn'),
             liveRefreshToggle: document.getElementById('liveRefreshToggle'),
-            addDeviceBtn: document.getElementById('addDeviceBtn'),
+            addDeviceBtn: document.getElementById('addDeviceBtn'), // Now an <a> tag
             addEdgeBtn: document.getElementById('addEdgeBtn'),
             fullscreenBtn: document.getElementById('fullscreenBtn'),
             exportBtn: document.getElementById('exportBtn'),
             importBtn: document.getElementById('importBtn'),
             importFile: document.getElementById('importFile'),
-            deviceModal: document.getElementById('deviceModal'),
+            deviceModal: document.getElementById('deviceModal'), // Still used for editing
             deviceForm: document.getElementById('deviceForm'),
             cancelBtn: document.getElementById('cancelBtn'),
             edgeModal: document.getElementById('edgeModal'),
@@ -37,19 +37,19 @@ MapApp.ui = {
             scanLoader: document.getElementById('scanLoader'),
             scanResults: document.getElementById('scanResults'),
             scanInitialMessage: document.getElementById('scanInitialMessage'),
-            placeDeviceBtn: document.getElementById('placeDeviceBtn'), // NEW
-            placeDeviceModal: document.getElementById('placeDeviceModal'), // NEW
-            closePlaceDeviceModal: document.getElementById('closePlaceDeviceModal'), // NEW
-            placeDeviceList: document.getElementById('placeDeviceList'), // NEW
-            placeDeviceLoader: document.getElementById('placeDeviceLoader'), // NEW
-            mapPermissionsBtn: document.getElementById('mapPermissionsBtn'), // NEW
-            mapPermissionsModal: document.getElementById('mapPermissionsModal'), // NEW
-            mapPermissionsForm: document.getElementById('mapPermissionsForm'), // NEW
-            permissionsMapName: document.getElementById('permissionsMapName'), // NEW
-            permissionsMapId: document.getElementById('permissionsMapId'), // NEW
-            userPermissionsList: document.getElementById('userPermissionsList'), // NEW
-            cancelMapPermissionsBtn: document.getElementById('cancelMapPermissionsBtn'), // NEW
-            saveMapPermissionsBtn: document.getElementById('saveMapPermissionsBtn'), // NEW
+            placeDeviceBtn: document.getElementById('placeDeviceBtn'),
+            placeDeviceModal: document.getElementById('placeDeviceModal'),
+            closePlaceDeviceModal: document.getElementById('closePlaceDeviceModal'),
+            placeDeviceList: document.getElementById('placeDeviceList'),
+            placeDeviceLoader: document.getElementById('placeDeviceLoader'),
+            mapPermissionsBtn: document.getElementById('mapPermissionsBtn'),
+            mapPermissionsModal: document.getElementById('mapPermissionsModal'),
+            mapPermissionsForm: document.getElementById('mapPermissionsForm'),
+            permissionsMapName: document.getElementById('permissionsMapName'),
+            permissionsMapId: document.getElementById('permissionsMapId'),
+            userPermissionsList: document.getElementById('userPermissionsList'),
+            cancelMapPermissionsBtn: document.getElementById('cancelMapPermissionsBtn'),
+            saveMapPermissionsBtn: document.getElementById('saveMapPermissionsBtn'),
         };
     },
 
@@ -76,7 +76,8 @@ MapApp.ui = {
         document.getElementById('nameTextSizeLabel').textContent = isAnnotation ? 'Height' : 'Name Text Size';
     },
 
-    openDeviceModal: (deviceId = null, prefill = {}) => {
+    // This function is now exclusively for editing existing devices
+    openDeviceModal: (deviceId) => {
         MapApp.ui.els.deviceForm.reset();
         document.getElementById('deviceId').value = '';
         const previewWrapper = document.getElementById('icon_preview_wrapper');
@@ -88,7 +89,7 @@ MapApp.ui = {
             document.getElementById('deviceId').value = node.id;
             document.getElementById('deviceName').value = node.deviceData.name;
             document.getElementById('deviceIp').value = node.deviceData.ip;
-            document.getElementById('deviceDescription').value = node.deviceData.description; // Added description
+            document.getElementById('deviceDescription').value = node.deviceData.description;
             document.getElementById('checkPort').value = node.deviceData.check_port;
             document.getElementById('deviceType').value = node.deviceData.type;
             document.getElementById('icon_url').value = node.deviceData.icon_url || '';
@@ -105,19 +106,9 @@ MapApp.ui = {
             document.getElementById('critical_packetloss_threshold').value = node.deviceData.critical_packetloss_threshold;
             document.getElementById('showLivePing').checked = node.deviceData.show_live_ping;
         } else {
-            document.getElementById('modalTitle').textContent = 'Add Item';
-            document.getElementById('deviceName').value = prefill.name || '';
-            document.getElementById('deviceIp').value = prefill.ip || '';
-            // Set default values for new devices
-            document.getElementById('deviceType').value = 'server';
-            document.getElementById('iconSize').value = 50;
-            document.getElementById('nameTextSize').value = 14;
-            document.getElementById('showLivePing').checked = false;
-            document.getElementById('pingInterval').value = ''; // Clear interval for new devices
-            document.getElementById('warning_latency_threshold').value = '';
-            document.getElementById('warning_packetloss_threshold').value = '';
-            document.getElementById('critical_latency_threshold').value = '';
-            document.getElementById('critical_packetloss_threshold').value = '';
+            // This branch should ideally not be hit if 'Add New Device' links to createdevice.php
+            window.notyf.error('Error: Attempted to open edit modal without a device ID. This should not happen.');
+            return;
         }
         MapApp.ui.toggleDeviceModalFields(document.getElementById('deviceType').value);
         MapApp.ui.els.deviceModal.classList.remove('hidden');
