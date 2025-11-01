@@ -13,13 +13,17 @@ if (in_array($action, $modificationActions) && ($_SESSION['role'] !== 'admin')) 
 
 switch ($action) {
     case 'get_maps':
+        error_log("DEBUG: get_maps action called. User ID: " . $current_user_id . ", Role: " . $_SESSION['role']);
         if ($_SESSION['role'] === 'admin') {
             // Admins can see all maps
-            $stmt = $pdo->prepare("SELECT m.id, m.name, m.type, m.background_color, m.background_image_url, m.is_default, m.updated_at as lastModified, (SELECT COUNT(*) FROM devices WHERE map_id = m.id AND user_id = ?) as deviceCount FROM maps m ORDER BY m.created_at ASC");
-            $stmt->execute([$current_user_id]); // Still pass user_id for deviceCount subquery
+            $sql = "SELECT m.id, m.name, m.type, m.background_color, m.background_image_url, m.is_default, m.updated_at as lastModified, (SELECT COUNT(*) FROM devices WHERE map_id = m.id AND user_id = ?) as deviceCount FROM maps m ORDER BY m.created_at ASC";
+            $params = [$current_user_id];
+            error_log("DEBUG: Admin get_maps SQL: " . $sql . ", Params: " . json_encode($params));
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($params);
         } else {
             // Basic users only see maps they have permission for
-            $stmt = $pdo->prepare("
+            $sql = "
                 SELECT 
                     m.id, m.name, m.type, m.background_color, m.background_image_url, m.is_default, m.updated_at as lastModified, 
                     (SELECT COUNT(*) FROM devices WHERE map_id = m.id AND user_id = ?) as deviceCount 
@@ -27,10 +31,14 @@ switch ($action) {
                 JOIN user_map_permissions ump ON m.id = ump.map_id
                 WHERE ump.user_id = ?
                 ORDER BY m.created_at ASC
-            ");
-            $stmt->execute([$current_user_id, $current_user_id]);
+            ";
+            $params = [$current_user_id, $current_user_id];
+            error_log("DEBUG: Basic user get_maps SQL: " . $sql . ", Params: " . json_encode($params));
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($params);
         }
         $maps = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        error_log("DEBUG: get_maps returning: " . json_encode($maps));
         echo json_encode($maps);
         break;
 
