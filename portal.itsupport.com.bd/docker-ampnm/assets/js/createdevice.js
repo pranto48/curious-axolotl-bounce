@@ -98,6 +98,8 @@ function initCreateDevice() {
         try {
             const result = await api.post('create_device', data);
             console.log("API response for create_device:", result); // Added log for debugging
+            console.log("Result.success value:", result.success); // Explicitly log success property
+
             if (result.success) {
                 window.notyf.success('Device created successfully!');
                 createDeviceForm.reset();
@@ -117,11 +119,12 @@ function initCreateDevice() {
                 // Redirect to devices.php after successful creation
                 window.location.href = 'devices.php';
             } else {
-                window.notyf.error(`Error: ${result.error}`);
+                // This block will now be hit if result.success is explicitly false
+                window.notyf.error(`Error: ${result.error || 'An unknown error occurred during device creation.'}`);
             }
         } catch (error) {
             console.error("Error caught during device creation process:", error); // Keep this log
-            window.notyf.error('An unexpected error occurred while creating the device.');
+            window.notyf.error('An unexpected error occurred while creating the device. Check console for details.');
         } finally {
             saveDeviceBtn.disabled = false;
             saveDeviceBtn.innerHTML = '<i class="fas fa-plus mr-2"></i>Create Device';
