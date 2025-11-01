@@ -15,7 +15,6 @@ RUN apt-get update && apt-get install -y \
     curl \
     libmariadb-dev \
     libwebp-dev \
-    # Install Composer dependencies (zip is already handled by libzip-dev)
     # Clean up
     && rm -rf /var/lib/apt/lists/*
 
