@@ -219,7 +219,7 @@ try {
             FOREIGN KEY (`device_id`) REFERENCES `devices`(`id`) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
         
-        // NEW TABLE FOR APPLICATION SETTINGS (LICENSE KEY, INSTALLATION ID)
+        // NEW TABLE FOR APPLICATION SETTINGS (LICENSE KEY, INSTALLATION ID, CACHED LICENSE DATA)
         "CREATE TABLE IF NOT EXISTS `app_settings` (
             `id` INT(6) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
             `setting_key` VARCHAR(100) NOT NULL UNIQUE,
@@ -325,7 +325,10 @@ try {
     // Initialize app_settings for license management
     $settings_to_init = [
         'installation_id' => generateUuid(),
-        'app_license_key' => '' // Initially empty, user will fill this
+        'app_license_key' => '', // Initially empty, user will fill this
+        'license_expires_at' => null, // New: Cache license expiry date
+        'license_max_devices' => 0, // New: Cache max devices
+        'last_successful_verification' => null // New: Timestamp of last successful portal check
     ];
 
     foreach ($settings_to_init as $key => $value) {

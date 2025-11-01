@@ -45,8 +45,8 @@ function generateUuid() {
 }
 
 /**
- * Performs the actual license verification with the portal API using file_get_contents.
- * Caches results in session.
+ * Performs the actual license verification with the portal API using curl.
+ * Caches results in session and locally in app_settings.
  */
 function verifyLicenseWithPortal() {
     if (!isset($_SESSION['user_id'])) {
@@ -57,8 +57,9 @@ function verifyLicenseWithPortal() {
         return;
     }
 
+    // Check if cached session data is still valid
     if (isset($_SESSION['license_last_verified']) && (time() - $_SESSION['license_last_verified'] < LICENSE_VERIFICATION_INTERVAL)) {
-        return; // Use cached data
+        return; // Use cached session data
     }
 
     $app_license_key = getAppSetting('app_license_key');
@@ -88,34 +89,43 @@ function verifyLicenseWithPortal() {
 
     $license_api_url = LICENSE_API_URL;
 
-    // --- Use stream context for POST request with file_get_contents ---
-    $context = stream_context_create([
-        'http' => [
-            'method' => 'POST',
-            'header' => "Content-Type: application/json\r\n",
-            'content' => json_encode($post_data),
-            'timeout' => 10, // 10 second timeout
-            // NOTE: We rely on the Docker environment's PHP configuration for SSL/TLS.
-            // If this fails, it's a fundamental network/DNS issue.
-        ],
-        // Temporarily disable SSL verification for stream context if needed for debugging
-        'ssl' => [
-            'verify_peer' => false,
-            'verify_peer_name' => false,
-        ]
-    ]);
+    // --- Use cURL for POST request ---
+    $ch = curl_init($license_api_url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($post_data));
+    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 10); // 10 second timeout
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // Temporarily disable SSL verification for debugging
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false); // Temporarily disable SSL verification for debugging
 
-    $encrypted_response = @file_get_contents($license_api_url, false, $context);
+    $encrypted_response = curl_exec($ch);
+    $curl_error = curl_error($ch);
+    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
 
-    if ($encrypted_response === false) {
-        $error = error_get_last();
-        $error_message = $error['message'] ?? 'Unknown connection error.';
-        error_log("LICENSE_ERROR: License server unreachable via file_get_contents. Error: {$error_message}");
-        $_SESSION['license_status'] = 'error';
-        $_SESSION['license_message'] = "Could not connect to license server. Network/DNS error: {$error_message}.";
-        $_SESSION['license_max_devices'] = 0;
-        $_SESSION['license_expires_at'] = null;
-        $_SESSION['license_last_verified'] = time();
+    if ($encrypted_response === false || $http_code >= 400) {
+        error_log("LICENSE_ERROR: License server unreachable via cURL. HTTP Code: {$http_code}. cURL Error: {$curl_error}");
+        
+        // --- Fallback to locally stored license data ---
+        $local_expires_at = getAppSetting('license_expires_at');
+        $local_max_devices = getAppSetting('license_max_devices');
+        $last_successful_verification = getAppSetting('last_successful_verification');
+
+        if ($local_expires_at && strtotime($local_expires_at) < time()) {
+            $_SESSION['license_status'] = 'locally_expired';
+            $_SESSION['license_message'] = "License expired locally on " . date('Y-m-d', strtotime($local_expires_at)) . ". Could not connect to portal for re-verification.";
+        } else if ($local_expires_at && $last_successful_verification && (time() - strtotime($last_successful_verification)) > (30 * 24 * 60 * 60)) { // If no connection for 30 days
+            $_SESSION['license_status'] = 'unreachable_long_term';
+            $_SESSION['license_message'] = "Could not connect to license portal for a long time. Last successful check: " . date('Y-m-d', strtotime($last_successful_verification)) . ".";
+        } else {
+            $_SESSION['license_status'] = 'unreachable';
+            $_SESSION['license_message'] = "Could not connect to license server. Network/DNS error: {$curl_error}. Using cached data if available.";
+        }
+        
+        $_SESSION['license_max_devices'] = $local_max_devices ?? 0;
+        $_SESSION['license_expires_at'] = $local_expires_at ?? null;
+        $_SESSION['license_last_verified'] = time(); // Update last verified to prevent immediate re-attempt
         return;
     }
 
@@ -137,6 +147,12 @@ function verifyLicenseWithPortal() {
         $_SESSION['license_max_devices'] = $result['max_devices'] ?? 1;
         $_SESSION['license_expires_at'] = $result['expires_at'] ?? null;
         error_log("LICENSE_INFO: License verification successful. Status: active, Max Devices: {$result['max_devices']}.");
+
+        // Store successful verification data locally
+        updateAppSetting('license_expires_at', $result['expires_at']);
+        updateAppSetting('license_max_devices', $result['max_devices']);
+        updateAppSetting('last_successful_verification', date('Y-m-d H:i:s'));
+
     } else {
         $_SESSION['license_status'] = $result['actual_status'] ?? 'invalid';
         $_SESSION['license_message'] = $result['message'] ?? 'License is invalid.';

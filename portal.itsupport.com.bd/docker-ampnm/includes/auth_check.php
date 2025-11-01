@@ -34,10 +34,11 @@ if (!isset($_SESSION['license_status'])) $_SESSION['license_status'] = 'unknown'
 if (!isset($_SESSION['license_max_devices'])) $_SESSION['license_max_devices'] = 0;
 if (!isset($_SESSION['current_device_count'])) $_SESSION['current_device_count'] = 0;
 if (!isset($_SESSION['license_expires_at'])) $_SESSION['license_expires_at'] = null;
+if (!isset($_SESSION['last_successful_verification'])) $_SESSION['last_successful_verification'] = null; // New: Track last successful verification
 
 // Retrieve the application license key dynamically
-$app_license_key = getAppLicenseKey();
-$installation_id = getInstallationId(); // Retrieve the installation ID
+$app_license_key = getAppSetting('app_license_key');
+$installation_id = getAppSetting('installation_id'); // Retrieve the installation ID
 
 error_log("DEBUG: auth_check.php - Retrieved app_license_key: " . (empty($app_license_key) ? 'EMPTY' : 'PRESENT') . ", Installation ID: " . (empty($installation_id) ? 'EMPTY' : $installation_id));
 
@@ -65,7 +66,7 @@ if ($app_license_key && (!isset($_SESSION['license_last_verified']) || (time() -
 }
 
 // --- Enforce License Status ---
-$non_active_statuses = ['expired', 'revoked', 'in_use', 'invalid', 'not_found', 'error', 'disabled'];
+$non_active_statuses = ['expired', 'revoked', 'in_use', 'invalid', 'not_found', 'error', 'disabled', 'locally_expired', 'unreachable_long_term']; // Added new statuses
 $current_license_status = $_SESSION['license_status'] ?? 'unknown';
 
 if (in_array($current_license_status, $non_active_statuses)) {

@@ -52,6 +52,7 @@ if (session_status() === PHP_SESSION_NONE) {
             $max_devices = $_SESSION['license_max_devices'] ?? 0;
             $current_devices = $_SESSION['current_device_count'] ?? 0;
             $expires_at = $_SESSION['license_expires_at'] ?? null;
+            $last_successful_verification = $_SESSION['last_successful_verification'] ?? null;
 
             $status_class = '';
             $status_icon = '';
@@ -68,6 +69,7 @@ if (session_status() === PHP_SESSION_NONE) {
                     }
                     break;
                 case 'expired':
+                case 'locally_expired': // New status
                     $status_class = 'bg-red-500/20 text-red-400 border-red-500/30';
                     $status_icon = '<i class="fas fa-exclamation-triangle mr-1"></i>';
                     $display_message = "License Expired! ({$license_message})";
@@ -86,6 +88,15 @@ if (session_status() === PHP_SESSION_NONE) {
                     $status_class = 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
                     $status_icon = '<i class="fas fa-exclamation-circle mr-1"></i>';
                     $display_message = "License Unconfigured! Please set up your license key.";
+                    break;
+                case 'unreachable': // New status
+                case 'unreachable_long_term': // New status
+                    $status_class = 'bg-orange-500/20 text-orange-400 border-orange-500/30';
+                    $status_icon = '<i class="fas fa-cloud-offline mr-1"></i>';
+                    $display_message = "License Portal Unreachable! ({$license_message})";
+                    if ($last_successful_verification) {
+                        $display_message .= " Last successful check: " . date('Y-m-d H:i', strtotime($last_successful_verification));
+                    }
                     break;
                 case 'invalid':
                 case 'not_found':
