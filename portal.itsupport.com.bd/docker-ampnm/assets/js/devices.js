@@ -4,7 +4,6 @@ function initDevices() {
     const bulkCheckBtn = document.getElementById('bulkCheckBtn');
     const tableLoader = document.getElementById('tableLoader');
     const noDevicesMessage = document.getElementById('noDevicesMessage');
-    const createDeviceBtn = document.getElementById('createDeviceBtn');
     const exportDevicesBtn = document.getElementById('exportDevicesBtn');
     const importDevicesBtn = document.getElementById('importDevicesBtn');
     const importDevicesFile = document.getElementById('importDevicesFile');
@@ -17,7 +16,7 @@ function initDevices() {
     const detailsModalLoader = document.getElementById('detailsModalLoader');
     const closeDetailsModal = document.getElementById('closeDetailsModal');
     
-    const deviceModal = document.getElementById('deviceModal');
+    const deviceModal = document.getElementById('deviceModal'); // This modal is now for EDITING only
     const deviceForm = document.getElementById('deviceForm');
     const cancelBtn = document.getElementById('cancelBtn');
     let latencyChart = null;
@@ -102,7 +101,8 @@ function initDevices() {
         `;
     };
 
-    const openDeviceModal = async (device = null) => {
+    // This function is now exclusively for editing existing devices
+    const openEditDeviceModal = async (device = null) => {
         deviceForm.reset();
         document.getElementById('deviceId').value = '';
         const mapSelector = document.getElementById('deviceMap');
@@ -126,8 +126,10 @@ function initDevices() {
             document.getElementById('showLivePing').checked = device.show_live_ping;
             await populateMapSelector(mapSelector, device.map_id);
         } else {
-            document.getElementById('modalTitle').textContent = 'Create Device';
-            await populateMapSelector(mapSelector, null);
+            // This branch should ideally not be hit if 'Create New Device' links to a new page
+            document.getElementById('modalTitle').textContent = 'Error: No device to edit';
+            window.notyf.error('Attempted to open edit modal without a device. This should not happen.');
+            return;
         }
         openModal('deviceModal');
     };
@@ -141,18 +143,36 @@ function initDevices() {
             const id = data.id;
             delete data.id;
 
+            // Convert empty strings to null for optional numeric fields
+            const numericFields = ['ping_interval', 'icon_size', 'name_text_size', 'warning_latency_threshold', 'warning_packetloss_threshold', 'critical_latency_threshold', 'critical_packetloss_threshold'];
+            for (const key in data) {
+                if (numericFields.includes(key) && data[key] === '') {
+                    data[key] = null;
+                } else if (key === 'ip' && data[key] === '') {
+                    data[key] = null;
+                } else if (key === 'check_port' && data[key] === '') {
+                    data[key] = null;
+                } else if (key === 'icon_url' && data[key] === '') {
+                    data[key] = null;
+                } else if (key === 'map_id' && data[key] === '') {
+                    data[key] = null;
+                }
+            }
+
             try {
                 if (id) {
                     await api.post('update_device', { id, updates: data });
                     window.notyf.success('Device updated.');
                 } else {
-                    await api.post('create_device', data);
-                    window.notyf.success('Device created.');
+                    // This branch should not be hit if 'Create New Device' links to a new page
+                    window.notyf.error('Error: Attempted to create device from edit modal.');
+                    return;
                 }
                 closeModal('deviceModal');
                 loadDevices();
             } catch (error) {
                 window.notyf.error('Failed to save device.');
+                console.error(error);
             }
         });
     }
@@ -262,7 +282,7 @@ function initDevices() {
         if (IS_ADMIN) {
             if (button.classList.contains('edit-device-btn')) {
                 const deviceDetails = await api.get('get_device_details', { id: deviceId });
-                await openDeviceModal(deviceDetails.device);
+                await openEditDeviceModal(deviceDetails.device);
             }
 
             if (button.classList.contains('check-device-btn')) {
@@ -365,7 +385,7 @@ function initDevices() {
             importDevicesFile.value = ''; // Reset file input
         });
 
-        createDeviceBtn.addEventListener('click', async () => await openDeviceModal());
+        // Removed createDeviceBtn.addEventListener as it now links to a new page
         cancelBtn.addEventListener('click', () => closeModal('deviceModal'));
     }
 
