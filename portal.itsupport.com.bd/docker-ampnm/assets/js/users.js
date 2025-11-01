@@ -61,17 +61,21 @@ function initUsers() {
         try {
             const { all_maps, user_map_ids } = await api.get('get_user_map_permissions', { user_id: userId });
             
-            console.log('Fetched all_maps:', all_maps);
-            console.log('Fetched user_map_ids:', user_map_ids);
+            console.log('DEBUG: Fetched all_maps:', all_maps);
+            console.log('DEBUG: Fetched user_map_ids:', user_map_ids);
 
             if (all_maps.length === 0) {
-                mapPermissionsList.innerHTML = '<p class="text-sm text-slate-500">No maps available to assign.</p>';
+                console.warn('DEBUG: No maps found in the database for permissions display.');
+                mapPermissionsList.innerHTML = '<p class="text-sm text-slate-500">No maps available to assign. Please create maps first.</p>';
                 return;
+            }
+            if (user_map_ids.length === 0) {
+                console.log('DEBUG: User has no map permissions assigned yet.');
             }
 
             mapPermissionsList.innerHTML = all_maps.map(map => {
-                const isChecked = user_map_ids.includes(map.id.toString());
-                console.log(`Map ${map.name} (ID: ${map.id}), isChecked: ${isChecked}`);
+                const isChecked = user_map_ids.includes(map.id.toString()); // Keep toString() for robustness
+                console.log(`DEBUG: Map ${map.name} (ID: ${map.id}), isChecked: ${isChecked}`);
                 return `
                     <label class="flex items-center text-sm font-medium text-slate-400">
                         <input type="checkbox" name="map_id[]" value="${map.id}" class="h-4 w-4 rounded border-slate-500 bg-slate-700 text-cyan-600 focus:ring-cyan-500" ${isChecked ? 'checked' : ''}>
@@ -81,8 +85,8 @@ function initUsers() {
             }).join('');
 
         } catch (error) {
-            console.error('Failed to load map permissions:', error);
-            mapPermissionsList.innerHTML = '<p class="text-sm text-red-400">Failed to load map permissions.</p>';
+            console.error('ERROR: Failed to load map permissions:', error);
+            mapPermissionsList.innerHTML = '<p class="text-sm text-red-400">Failed to load map permissions. Check console for details.</p>';
         }
     };
 
