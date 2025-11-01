@@ -16,11 +16,7 @@ function initDevices() {
     const detailsModalLoader = document.getElementById('detailsModalLoader');
     const closeDetailsModal = document.getElementById('closeDetailsModal');
     
-    const deviceModal = document.getElementById('deviceModal'); // This modal is now for EDITING only
-    const deviceForm = document.getElementById('deviceForm');
-    const cancelBtn = document.getElementById('cancelBtn');
     let latencyChart = null;
-    let availableMaps = []; // Cache maps list
 
     // Check if the user is admin (set in footer.php)
     const IS_ADMIN = window.isAdmin;
@@ -48,7 +44,7 @@ function initDevices() {
         let adminActions = '';
         if (IS_ADMIN) {
             adminActions = `
-                <button class="edit-device-btn text-yellow-400 hover:text-yellow-300 mr-3" data-id="${device.id}" title="Edit Device"><i class="fas fa-edit"></i></button>
+                <a href="editdevice.php?id=${device.id}" class="text-yellow-400 hover:text-yellow-300 mr-3" title="Edit Device"><i class="fas fa-edit"></i></a>
                 <button class="check-device-btn text-green-400 hover:text-green-300 mr-3" data-id="${device.id}" title="Check Status"><i class="fas fa-sync"></i></button>
                 <button class="delete-device-btn text-red-500 hover:text-red-400" data-id="${device.id}" title="Delete Device"><i class="fas fa-trash"></i></button>
             `;
@@ -85,97 +81,6 @@ function initDevices() {
         } catch (error) { console.error('Failed to load devices:', error); }
         finally { tableLoader.classList.add('hidden'); }
     };
-
-    const populateMapSelector = async (selectElement, selectedMapId) => {
-        if (availableMaps.length === 0) {
-            try {
-                availableMaps = await api.get('get_maps');
-            } catch (e) {
-                console.error("Could not fetch maps for selector", e);
-                return;
-            }
-        }
-        selectElement.innerHTML = `
-            <option value="">Unassigned</option>
-            ${availableMaps.map(map => `<option value="${map.id}" ${map.id == selectedMapId ? 'selected' : ''}>${map.name}</option>`).join('')}
-        `;
-    };
-
-    // This function is now exclusively for editing existing devices
-    const openEditDeviceModal = async (device = null) => {
-        deviceForm.reset();
-        document.getElementById('deviceId').value = '';
-        const mapSelector = document.getElementById('deviceMap');
-        
-        if (device) {
-            document.getElementById('modalTitle').textContent = 'Edit Device';
-            document.getElementById('deviceId').value = device.id;
-            document.getElementById('deviceName').value = device.name;
-            document.getElementById('deviceIp').value = device.ip;
-            document.getElementById('deviceDescription').value = device.description;
-            document.getElementById('checkPort').value = device.check_port;
-            document.getElementById('deviceType').value = device.type;
-            document.getElementById('icon_url').value = device.icon_url || '';
-            document.getElementById('pingInterval').value = device.ping_interval;
-            document.getElementById('iconSize').value = device.icon_size;
-            document.getElementById('nameTextSize').value = device.name_text_size;
-            document.getElementById('warning_latency_threshold').value = device.warning_latency_threshold;
-            document.getElementById('warning_packetloss_threshold').value = device.warning_packetloss_threshold;
-            document.getElementById('critical_latency_threshold').value = device.critical_latency_threshold;
-            document.getElementById('critical_packetloss_threshold').value = device.critical_packetloss_threshold;
-            document.getElementById('showLivePing').checked = device.show_live_ping;
-            await populateMapSelector(mapSelector, device.map_id);
-        } else {
-            // This branch should ideally not be hit if 'Create New Device' links to a new page
-            document.getElementById('modalTitle').textContent = 'Error: No device to edit';
-            window.notyf.error('Attempted to open edit modal without a device. This should not happen.');
-            return;
-        }
-        openModal('deviceModal');
-    };
-
-    if (IS_ADMIN) {
-        deviceForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const formData = new FormData(deviceForm);
-            const data = Object.fromEntries(formData.entries());
-            data.show_live_ping = document.getElementById('showLivePing').checked;
-            const id = data.id;
-            delete data.id;
-
-            // Convert empty strings to null for optional numeric fields
-            const numericFields = ['ping_interval', 'icon_size', 'name_text_size', 'warning_latency_threshold', 'warning_packetloss_threshold', 'critical_latency_threshold', 'critical_packetloss_threshold'];
-            for (const key in data) {
-                if (numericFields.includes(key) && data[key] === '') {
-                    data[key] = null;
-                } else if (key === 'ip' && data[key] === '') {
-                    data[key] = null;
-                } else if (key === 'check_port' && data[key] === '') {
-                    data[key] = null;
-                } else if (key === 'icon_url' && data[key] === '') {
-                    data[key] = null;
-                } else if (key === 'map_id' && data[key] === '') {
-                    data[key] = null;
-                }
-            }
-
-            try {
-                if (id) {
-                    await api.post('update_device', { id, updates: data });
-                    window.notyf.success('Device updated.');
-                } else {
-                    // This branch should not be hit if 'Create New Device' links to a new page
-                    window.notyf.error('Error: Attempted to create device from edit modal.');
-                    return;
-                }
-                closeModal('deviceModal');
-                loadDevices();
-            } catch (error) {
-                window.notyf.error('Failed to save device.');
-                console.error(error);
-            }
-        });
-    }
 
     const openDetailsModal = async (deviceId) => {
         openModal('detailsModal');
@@ -280,10 +185,11 @@ function initDevices() {
         }
 
         if (IS_ADMIN) {
-            if (button.classList.contains('edit-device-btn')) {
-                const deviceDetails = await api.get('get_device_details', { id: deviceId });
-                await openEditDeviceModal(deviceDetails.device);
-            }
+            // Edit button now links directly to editdevice.php, so no JS handler here
+            // if (button.classList.contains('edit-device-btn')) {
+            //     const deviceDetails = await api.get('get_device_details', { id: deviceId });
+            //     await openEditDeviceModal(deviceDetails.device);
+            // }
 
             if (button.classList.contains('check-device-btn')) {
                 const icon = button.querySelector('i');
@@ -384,9 +290,6 @@ function initDevices() {
             reader.readAsText(file);
             importDevicesFile.value = ''; // Reset file input
         });
-
-        // Removed createDeviceBtn.addEventListener as it now links to a new page
-        cancelBtn.addEventListener('click', () => closeModal('deviceModal'));
     }
 
     deviceSearchInput.addEventListener('input', (e) => {

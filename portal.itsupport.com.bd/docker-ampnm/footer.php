@@ -25,6 +25,7 @@
     <script src="assets/js/status_logs.js"></script>
     <script src="assets/js/email_notifications.js"></script>
     <script src="assets/js/createdevice.js"></script> <!-- Re-added createdevice.js -->
+    <script src="assets/js/editdevice.js"></script> <!-- NEW: Include editdevice.js -->
     <script src="assets/js/profile.js"></script>
     
     <script>
@@ -69,8 +70,10 @@
             initStatusLogs();
         } else if (page === 'email_notifications.php') {
             initEmailNotifications();
-        } else if (page === 'createdevice.php') { // Initialize new createdevice script
+        } else if (page === 'createdevice.php') {
             initCreateDevice();
+        } else if (page === 'editdevice.php') { // NEW: Initialize editdevice.js
+            initEditDevicePage();
         } else if (page === 'profile.php') {
             initProfile();
         }

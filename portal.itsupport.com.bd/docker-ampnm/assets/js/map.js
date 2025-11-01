@@ -97,7 +97,7 @@ function initMap() {
             } else {
                 // If no file, revert to current map's image or none
                 const currentMap = state.maps.find(m => m.id == state.currentMapId);
-                els.mapBgImageUrl.value = currentMap.background_image_url || '';
+                els.mapBgImageUrl.value = currentMap.background_image_url ? `url(${currentMap.background_image_url})` : '';
                 const mapEl = document.getElementById('network-map');
                 mapEl.style.backgroundImage = currentMap.background_image_url ? `url(${currentMap.background_image_url})` : '';
             }
@@ -494,50 +494,51 @@ function initMap() {
             }
         };
 
-        // Device Form Submission (for editing existing devices only)
-        els.deviceForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const formData = new FormData(els.deviceForm);
-            const data = Object.fromEntries(formData.entries());
-            data.show_live_ping = document.getElementById('showLivePing').checked;
-            const id = data.id;
-            delete data.id; // Remove ID from data for updates, it's in the URL param
+        // Removed Device Form Submission (for editing existing devices only)
+        // as it now links to editdevice.php
+        // els.deviceForm.addEventListener('submit', async (e) => {
+        //     e.preventDefault();
+        //     const formData = new FormData(els.deviceForm);
+        //     const data = Object.fromEntries(formData.entries());
+        //     data.show_live_ping = document.getElementById('showLivePing').checked;
+        //     const id = data.id;
+        //     delete data.id; // Remove ID from data for updates, it's in the URL param
 
-            // Convert empty strings to null for optional numeric fields
-            const numericFields = ['ping_interval', 'icon_size', 'name_text_size', 'warning_latency_threshold', 'warning_packetloss_threshold', 'critical_latency_threshold', 'critical_packetloss_threshold'];
-            for (const key in data) {
-                if (numericFields.includes(key) && data[key] === '') {
-                    data[key] = null;
-                } else if (key === 'ip' && data[key] === '') {
-                    data[key] = null;
-                } else if (key === 'check_port' && data[key] === '') {
-                    data[key] = null;
-                } else if (key === 'icon_url' && data[key] === '') {
-                    data[key] = null;
-                } else if (key === 'map_id' && data[key] === '') {
-                    data[key] = null;
-                }
-            }
+        //     // Convert empty strings to null for optional numeric fields
+        //     const numericFields = ['ping_interval', 'icon_size', 'name_text_size', 'warning_latency_threshold', 'warning_packetloss_threshold', 'critical_latency_threshold', 'critical_packetloss_threshold'];
+        //     for (const key in data) {
+        //         if (numericFields.includes(key) && data[key] === '') {
+        //             data[key] = null;
+        //         } else if (key === 'ip' && data[key] === '') {
+        //             data[key] = null;
+        //         } else if (key === 'check_port' && data[key] === '') {
+        //             data[key] = null;
+        //         } else if (key === 'icon_url' && data[key] === '') {
+        //             data[key] = null;
+        //         } else if (key === 'map_id' && data[key] === '') {
+        //             data[key] = null;
+        //         }
+        //     }
 
-            els.saveBtn.disabled = true;
-            els.saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Saving...';
+        //     els.saveBtn.disabled = true;
+        //     els.saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Saving...';
 
-            try {
-                await api.post('update_device', { id, updates: data });
-                window.notyf.success('Device updated.');
+        //     try {
+        //         await api.post('update_device', { id, updates: data });
+        //         window.notyf.success('Device updated.');
                 
-                closeModal('deviceModal');
-                mapManager.switchMap(state.currentMapId); // Refresh map to show changes
-            } catch (error) {
-                window.notyf.error('Failed to save device.');
-                console.error(error);
-            } finally {
-                els.saveBtn.disabled = false;
-                els.saveBtn.innerHTML = 'Save';
-            }
-        });
+        //         closeModal('deviceModal');
+        //         mapManager.switchMap(state.currentMapId); // Refresh map to show changes
+        //     } catch (error) {
+        //         window.notyf.error('Failed to save device.');
+        //         console.error(error);
+        //     } finally {
+        //         els.saveBtn.disabled = false;
+        //         els.saveBtn.innerHTML = 'Save';
+        //     }
+        // });
 
-        els.cancelBtn.addEventListener('click', () => closeModal('deviceModal'));
+        // els.cancelBtn.addEventListener('click', () => closeModal('deviceModal'));
 
     } else {
         // Non-admin user: Disable all modification features
@@ -682,7 +683,8 @@ function initMap() {
             await mapManager.switchMap(initialMapId);
             const deviceToEdit = urlParams.get('edit_device_id');
             if (deviceToEdit && state.nodes.get(deviceToEdit) && IS_ADMIN) {
-                MapApp.ui.openDeviceModal(deviceToEdit);
+                // This logic is now handled by direct link to editdevice.php
+                // MapApp.ui.openDeviceModal(deviceToEdit);
                 const newUrl = window.location.pathname + `?map_id=${initialMapId}`;
                 history.replaceState(null, '', newUrl);
             }

@@ -42,7 +42,8 @@ MapApp.network = {
         MapApp.state.network.on("doubleClick", (params) => { 
             if (params.nodes.length > 0) {
                 if (IS_ADMIN) {
-                    MapApp.ui.openDeviceModal(params.nodes[0]); 
+                    // Redirect to editdevice.php instead of opening a modal
+                    window.location.href = `editdevice.php?id=${params.nodes[0]}`;
                 } else {
                     window.notyf.info('Read-only mode: Only administrators can edit device details.');
                 }
@@ -60,7 +61,7 @@ MapApp.network = {
                 let contextMenuItems = '';
                 if (IS_ADMIN) {
                     contextMenuItems += `
-                        <div class="context-menu-item" data-action="edit" data-id="${nodeId}"><i class="fas fa-edit fa-fw mr-2"></i>Edit</div>
+                        <a href="editdevice.php?id=${nodeId}" class="context-menu-item"><i class="fas fa-edit fa-fw mr-2"></i>Edit</a>
                         <div class="context-menu-item" data-action="copy" data-id="${nodeId}"><i class="fas fa-copy fa-fw mr-2"></i>Copy</div>
                         ${node.deviceData.ip ? `<div class="context-menu-item" data-action="ping" data-id="${nodeId}"><i class="fas fa-sync fa-fw mr-2"></i>Check Status</div>` : ''}
                         <div class="context-menu-item" data-action="delete" data-id="${nodeId}" style="color: #ef4444;"><i class="fas fa-trash-alt fa-fw mr-2"></i>Delete</div>
@@ -99,14 +100,17 @@ MapApp.network = {
                 const { action, id } = target.dataset;
                 closeContextMenu();
 
+                // If it's an <a> tag, let the browser handle the navigation
+                if (target.tagName === 'A') {
+                    return; 
+                }
+
                 if (!IS_ADMIN && action !== 'read-only-info' && action !== 'ping') { // Allow ping for non-admins if it's a read-only check
                     window.notyf.error('Read-only mode: Only administrators can modify the map.');
                     return;
                 }
 
-                if (action === 'edit') {
-                    MapApp.ui.openDeviceModal(id);
-                } else if (action === 'ping') {
+                if (action === 'ping') {
                     const icon = document.createElement('i');
                     icon.className = 'fas fa-spinner fa-spin';
                     target.prepend(icon);
