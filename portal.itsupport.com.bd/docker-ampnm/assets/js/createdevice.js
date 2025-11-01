@@ -50,7 +50,7 @@ function initCreateDevice() {
             if (maps.length > 0) {
                 maps.forEach(map => {
                     optionsHtml += `<option value="${map.id}">${map.name}</option>`;
-                    if (map.is_default == 1) { // Changed to explicitly check for 1
+                    if (map.is_default == 1) {
                         defaultMapId = map.id;
                     }
                 });
@@ -58,6 +58,9 @@ function initCreateDevice() {
             deviceMapSelect.innerHTML = optionsHtml;
             if (defaultMapId) {
                 deviceMapSelect.value = defaultMapId;
+                console.log(`Default map '${defaultMapId}' selected.`);
+            } else {
+                console.log('No default map found or no maps available. "No Map" selected.');
             }
         } catch (error) {
             console.error('Failed to load maps:', error);
