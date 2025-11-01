@@ -254,7 +254,7 @@ function initMap() {
             }
             openModal('scanModal');
             els.scanResults.innerHTML = ''; // Clear previous results
-            els.scanInitialMessage.classList.remove('hidden');
+            els.scanInitialMessage.classList.add('hidden');
             els.scanLoader.classList.add('hidden');
         });
 
@@ -332,7 +332,7 @@ function initMap() {
                     show_live_ping: false
                 };
                 const result = await api.post('create_device', newDevice);
-                if (result.id) {
+                if (result.success && result.device.id) { // Check for success and device ID
                     window.notyf.success(`Device '${name}' (${ip}) placed on map.`);
                     mapManager.switchMap(state.currentMapId); // Refresh map
                     button.closest('div').remove(); // Remove from scan results list
@@ -653,6 +653,13 @@ function initMap() {
     });
 
     els.mapSelector.addEventListener('change', (e) => mapManager.switchMap(e.target.value));
+
+    // Export/Import Buttons
+    if (IS_ADMIN) {
+        els.exportBtn.addEventListener('click', mapManager.exportMap);
+        els.importBtn.addEventListener('click', () => els.importFile.click());
+        els.importFile.addEventListener('change', mapManager.importMapFromFile);
+    }
 
     // Initial Load
     (async () => {

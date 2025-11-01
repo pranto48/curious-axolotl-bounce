@@ -161,12 +161,12 @@ switch ($action) {
                 // Insert new devices
                 $device_id_map = [];
                 $sql = "INSERT INTO devices (
-                    user_id, name, ip, check_port, type, x, y, map_id, 
+                    user_id, name, ip, check_port, type, description, x, y, map_id, 
                     ping_interval, icon_size, name_text_size, icon_url, 
                     warning_latency_threshold, warning_packetloss_threshold, 
                     critical_latency_threshold, critical_packetloss_threshold, 
                     show_live_ping
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
                 $stmt = $pdo->prepare($sql);
                 foreach ($devices as $device) {
                     $stmt->execute([
@@ -175,6 +175,7 @@ switch ($action) {
                         $device['ip'] ?? null,
                         $device['check_port'] ?? null,
                         $device['type'] ?? 'other',
+                        $device['description'] ?? null, // Added description
                         $device['x'] ?? null,
                         $device['y'] ?? null,
                         $map_id,
@@ -189,13 +190,17 @@ switch ($action) {
                         ($device['show_live_ping'] ?? false) ? 1 : 0
                     ]);
                     $new_id = $pdo->lastInsertId();
-                    $device_id_map[$device['id']] = $new_id;
+                    // Map the old ID from the imported data to the new database ID
+                    if (isset($device['old_id'])) {
+                        $device_id_map[$device['old_id']] = $new_id;
+                    }
                 }
 
                 // Insert new edges
                 $sql = "INSERT INTO device_edges (user_id, source_id, target_id, map_id, connection_type) VALUES (?, ?, ?, ?, ?)";
                 $stmt = $pdo->prepare($sql);
                 foreach ($edges as $edge) {
+                    // Use the mapped new IDs for source and target
                     $new_source_id = $device_id_map[$edge['from']] ?? null;
                     $new_target_id = $device_id_map[$edge['to']] ?? null;
                     if ($new_source_id && $new_target_id) {
