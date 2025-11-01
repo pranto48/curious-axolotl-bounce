@@ -2,12 +2,16 @@
 // This file is included by api.php and assumes $pdo, $action, and $input are available.
 $current_user_id = $_SESSION['user_id'];
 
-// Enforce admin-only access for modification actions
-$modificationActions = ['import_devices', 'create_device', 'update_device', 'delete_device', 'upload_device_icon', 'check_all_devices_globally', 'ping_all_devices'];
+// Enforce admin-only access for modification and check actions
+$adminOnlyActions = [
+    'import_devices', 'create_device', 'update_device', 'delete_device', 
+    'upload_device_icon', 'check_all_devices_globally', 'ping_all_devices', 
+    'check_device' // <-- Restrict single device check to admin
+];
 
-if (in_array($action, $modificationActions) && ($_SESSION['role'] !== 'admin')) {
+if (in_array($action, $adminOnlyActions) && ($_SESSION['role'] !== 'admin')) {
     http_response_code(403);
-    echo json_encode(['error' => 'Forbidden: Only admin users can modify devices or trigger bulk checks.']);
+    echo json_encode(['error' => 'Forbidden: Only admin users can modify devices or trigger checks.']);
     exit;
 }
 
@@ -530,3 +534,4 @@ switch ($action) {
         }
         break;
 }
+?>
