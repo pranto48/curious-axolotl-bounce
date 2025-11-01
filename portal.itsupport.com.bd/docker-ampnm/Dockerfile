@@ -15,6 +15,7 @@ RUN apt-get update && apt-get install -y \
     curl \
     libmariadb-dev \
     libwebp-dev \
+    libcurl4-openssl-dev \
     # Clean up
     && rm -rf /var/lib/apt/lists/*
 
