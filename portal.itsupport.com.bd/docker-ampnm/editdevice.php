@@ -29,18 +29,22 @@ if (!$device_id) {
                     <label for="deviceName" class="block text-sm font-medium text-slate-400 mb-1">Name</label>
                     <input type="text" id="deviceName" name="name" placeholder="Device Name" class="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2 focus:ring-2 focus:ring-cyan-500" required>
                 </div>
-                <div>
-                    <label for="deviceIp" class="block text-sm font-medium text-slate-400 mb-1">IP Address (Optional)</label>
-                    <input type="text" id="deviceIp" name="ip" placeholder="IP Address (e.g., 192.168.1.1)" class="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2 focus:ring-2 focus:ring-cyan-500">
+                <div id="deviceIpWrapper">
+                    <div>
+                        <label for="deviceIp" class="block text-sm font-medium text-slate-400 mb-1">IP Address (Optional)</label>
+                        <input type="text" id="deviceIp" name="ip" placeholder="IP Address (e.g., 192.168.1.1)" class="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2 focus:ring-2 focus:ring-cyan-500">
+                    </div>
                 </div>
                 <div>
                     <label for="deviceDescription" class="block text-sm font-medium text-slate-400 mb-1">Description (Optional)</label>
                     <textarea id="deviceDescription" name="description" rows="2" placeholder="Optional notes about the device" class="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2 focus:ring-2 focus:ring-cyan-500"></textarea>
                 </div>
-                <div>
-                    <label for="checkPort" class="block text-sm font-medium text-slate-400 mb-1">Service Port (Optional)</label>
-                    <input type="number" id="checkPort" name="check_port" placeholder="e.g., 80 for HTTP" class="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2 focus:ring-2 focus:ring-cyan-500">
-                    <p class="text-xs text-slate-500 mt-1">If set, status is based on this port. If empty, it will use ICMP (ping).</p>
+                <div id="devicePortWrapper">
+                    <div>
+                        <label for="checkPort" class="block text-sm font-medium text-slate-400 mb-1">Service Port (Optional)</label>
+                        <input type="number" id="checkPort" name="check_port" placeholder="e.g., 80 for HTTP" class="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2 focus:ring-2 focus:ring-cyan-500">
+                        <p class="text-xs text-slate-500 mt-1">If set, status is based on this port. If empty, it will use ICMP (ping).</p>
+                    </div>
                 </div>
                 <div>
                     <label for="deviceType" class="block text-sm font-medium text-slate-400 mb-1">Type (Default Icon)</label>
@@ -91,9 +95,11 @@ if (!$device_id) {
                         </div>
                     </div>
                 </fieldset>
-                <div>
-                    <label for="pingInterval" class="block text-sm font-medium text-slate-400 mb-1">Ping Interval (seconds)</label>
-                    <input type="number" id="pingInterval" name="ping_interval" placeholder="e.g., 60 (optional)" class="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2 focus:ring-2 focus:ring-cyan-500">
+                <div id="pingIntervalWrapper">
+                    <div>
+                        <label for="pingInterval" class="block text-sm font-medium text-slate-400 mb-1">Ping Interval (seconds)</label>
+                        <input type="number" id="pingInterval" name="ping_interval" placeholder="e.g., 60 (optional)" class="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2 focus:ring-2 focus:ring-cyan-500">
+                    </div>
                 </div>
                 <fieldset id="thresholdsWrapper" class="border border-slate-600 rounded-lg p-4">
                     <legend class="text-sm font-medium text-slate-400 px-2">Status Thresholds (optional)</legend>
@@ -140,5 +146,3 @@ if (!$device_id) {
         </div>
     </div>
 </main>
-
-<?php include 'footer.php'; ?>
