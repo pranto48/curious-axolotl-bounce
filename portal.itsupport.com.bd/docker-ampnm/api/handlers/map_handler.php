@@ -3,7 +3,7 @@
 $current_user_id = $_SESSION['user_id'];
 
 // Enforce admin-only access for modification actions
-$modificationActions = ['create_map', 'update_map', 'delete_map', 'create_edge', 'update_edge', 'delete_edge', 'import_map', 'upload_map_background', 'update_user_map_permissions'];
+$modificationActions = ['create_map', 'update_map', 'delete_map', 'create_edge', 'update_edge', 'delete_edge', 'import_map', 'upload_map_background', 'get_all_users_with_map_permissions', 'update_map_user_permissions'];
 
 if (in_array($action, $modificationActions) && ($_SESSION['role'] !== 'admin')) {
     http_response_code(403);
@@ -255,53 +255,51 @@ switch ($action) {
         }
         break;
 
-    case 'get_user_map_permissions':
-        // Admin-only action
-        $target_user_id = $_GET['user_id'] ?? null;
-        if (!$target_user_id) {
+    case 'get_all_users_with_map_permissions': // NEW ACTION
+        $map_id = $_GET['map_id'] ?? null;
+        if (!$map_id) {
             http_response_code(400);
-            echo json_encode(['error' => 'Target User ID is required.']);
+            echo json_encode(['error' => 'Map ID is required.']);
             exit;
         }
 
-        // Get all maps
-        $stmt_all_maps = $pdo->query("SELECT id, name FROM maps ORDER BY name ASC");
-        $all_maps = $stmt_all_maps->fetchAll(PDO::FETCH_ASSOC);
+        // Get all users
+        $stmt_all_users = $pdo->query("SELECT id, username, role FROM users ORDER BY username ASC");
+        $all_users = $stmt_all_users->fetchAll(PDO::FETCH_ASSOC);
 
-        // Get maps the target user has access to
-        $stmt_user_maps = $pdo->prepare("SELECT map_id FROM user_map_permissions WHERE user_id = ?");
-        $stmt_user_maps->execute([$target_user_id]);
-        $user_map_ids = $stmt_user_maps->fetchAll(PDO::FETCH_COLUMN);
+        // Get users who have permission for this specific map
+        $stmt_map_users = $pdo->prepare("SELECT user_id FROM user_map_permissions WHERE map_id = ?");
+        $stmt_map_users->execute([$map_id]);
+        $map_user_ids = $stmt_map_users->fetchAll(PDO::FETCH_COLUMN);
 
-        echo json_encode(['all_maps' => $all_maps, 'user_map_ids' => $user_map_ids]);
+        echo json_encode(['all_users' => $all_users, 'map_user_ids' => $map_user_ids]);
         break;
 
-    case 'update_user_map_permissions':
-        // Admin-only action
+    case 'update_map_user_permissions': // NEW ACTION
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $target_user_id = $input['user_id'] ?? null;
-            $map_ids_to_grant = $input['map_ids'] ?? []; // Array of map IDs
+            $map_id = $input['map_id'] ?? null;
+            $user_ids_to_grant = $input['user_ids'] ?? []; // Array of user IDs
 
-            if (!$target_user_id) {
+            if (!$map_id) {
                 http_response_code(400);
-                echo json_encode(['error' => 'Target User ID is required.']);
+                echo json_encode(['error' => 'Map ID is required.']);
                 exit;
             }
 
             try {
                 $pdo->beginTransaction();
 
-                // 1. Delete all existing permissions for this user
-                $stmt_delete = $pdo->prepare("DELETE FROM user_map_permissions WHERE user_id = ?");
-                $stmt_delete->execute([$target_user_id]);
+                // 1. Delete all existing permissions for this map
+                $stmt_delete = $pdo->prepare("DELETE FROM user_map_permissions WHERE map_id = ?");
+                $stmt_delete->execute([$map_id]);
 
                 // 2. Insert new permissions
-                if (!empty($map_ids_to_grant)) {
-                    $placeholders = implode(',', array_fill(0, count($map_ids_to_grant), '(?, ?)'));
+                if (!empty($user_ids_to_grant)) {
+                    $placeholders = implode(',', array_fill(0, count($user_ids_to_grant), '(?, ?)'));
                     $sql_insert = "INSERT INTO user_map_permissions (user_id, map_id) VALUES $placeholders";
                     $insert_params = [];
-                    foreach ($map_ids_to_grant as $map_id) {
-                        $insert_params[] = $target_user_id;
+                    foreach ($user_ids_to_grant as $user_id) {
+                        $insert_params[] = $user_id;
                         $insert_params[] = $map_id;
                     }
                     $stmt_insert = $pdo->prepare($sql_insert);
@@ -309,13 +307,14 @@ switch ($action) {
                 }
 
                 $pdo->commit();
-                echo json_encode(['success' => true, 'message' => 'User map permissions updated successfully.']);
+                echo json_encode(['success' => true, 'message' => 'Map permissions updated successfully.']);
 
             } catch (Exception $e) {
                 $pdo->rollBack();
                 http_response_code(500);
-                echo json_encode(['error' => 'Failed to update user map permissions: ' . $e->getMessage()]);
+                echo json_encode(['error' => 'Failed to update map permissions: ' . $e->getMessage()]);
             }
         }
         break;
 }
+?>

@@ -48,6 +48,7 @@ $is_admin = $_SESSION['is_admin'] ?? false;
                                 <button id="importBtn" class="px-3 py-2 bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600" title="Import Map"><i class="fas fa-file-import"></i></button>
                                 <input type="file" id="importFile" class="hidden" accept=".json">
                                 <button id="mapSettingsBtn" class="px-3 py-2 bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600" title="Map Settings"><i class="fas fa-cog"></i></button>
+                                <button id="mapPermissionsBtn" class="px-3 py-2 bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600" title="Map Permissions"><i class="fas fa-users"></i></button>
                                 <button id="fullscreenBtn" class="px-3 py-2 bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600" title="Toggle Fullscreen"><i class="fas fa-expand"></i></button>
                             </div>
                         <?php else: ?>
@@ -283,6 +284,26 @@ $is_admin = $_SESSION['is_admin'] ?? false;
                 <!-- Unmapped devices will be listed here -->
             </div>
             <div id="placeDeviceLoader" class="text-center py-8 hidden"><div class="loader mx-auto"></div></div>
+        </div>
+    </div>
+
+    <!-- Map Permissions Modal -->
+    <div id="mapPermissionsModal" class="modal-backdrop hidden">
+        <div class="modal-panel bg-slate-800 rounded-lg shadow-xl p-6 w-full max-w-md max-h-[90vh] flex flex-col">
+            <h2 class="text-xl font-semibold text-white mb-4 flex-shrink-0">Map Permissions for <span id="permissionsMapName" class="text-cyan-400"></span></h2>
+            <form id="mapPermissionsForm" class="flex flex-col flex-grow min-h-0">
+                <input type="hidden" id="permissionsMapId" name="map_id">
+                <div class="flex-grow overflow-y-auto space-y-3 p-1 -m-1">
+                    <div id="userPermissionsList" class="space-y-2">
+                        <!-- User checkboxes will be loaded here by JS -->
+                        <div class="text-center py-4"><div class="loader mx-auto w-4 h-4"></div><span class="ml-2 text-sm text-slate-400">Loading users...</span></div>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-4 mt-6 flex-shrink-0">
+                    <button type="button" id="cancelMapPermissionsBtn" class="px-4 py-2 bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600">Cancel</button>
+                    <button type="submit" id="saveMapPermissionsBtn" class="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700">Save Permissions</button>
+                </div>
+            </form>
         </div>
     </div>
 </main>
