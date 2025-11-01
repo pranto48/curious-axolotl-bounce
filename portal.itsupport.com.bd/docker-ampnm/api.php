@@ -10,9 +10,9 @@ $input = json_decode(file_get_contents('php://input'), true) ?? [];
 // Group actions by handler
 $pingActions = ['manual_ping', 'scan_network', 'ping_device', 'get_ping_history'];
 $deviceActions = ['get_devices', 'create_device', 'update_device', 'delete_device', 'get_device_details', 'check_device', 'check_all_devices_globally', 'ping_all_devices', 'get_device_uptime', 'upload_device_icon', 'import_devices'];
-$mapActions = ['get_maps', 'create_map', 'delete_map', 'get_edges', 'create_edge', 'update_edge', 'delete_edge', 'import_map', 'update_map', 'upload_map_background', 'get_user_map_permissions', 'update_user_map_permissions']; // Added new map actions
+$mapActions = ['get_maps', 'create_map', 'delete_map', 'get_edges', 'create_edge', 'update_edge', 'delete_edge', 'import_map', 'update_map', 'upload_map_background', 'get_user_map_permissions', 'update_user_map_permissions'];
 $dashboardActions = ['get_dashboard_data'];
-$userActions = ['get_users', 'create_user', 'delete_user'];
+$userActions = ['get_users', 'create_user', 'delete_user', 'update_user', 'change_my_password']; // Added change_my_password
 $logActions = ['get_status_logs'];
 $notificationActions = ['get_smtp_settings', 'save_smtp_settings', 'get_device_subscriptions', 'save_device_subscription', 'delete_device_subscription', 'get_all_devices_for_subscriptions'];
 

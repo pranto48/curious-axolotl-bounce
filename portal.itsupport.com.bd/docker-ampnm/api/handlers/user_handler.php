@@ -2,7 +2,7 @@
 // This file is included by api.php and assumes $pdo, $action, and $input are available.
 
 // Ensure only admin can perform these actions
-if ($_SESSION['role'] !== 'admin') {
+if (in_array($action, ['get_users', 'create_user', 'delete_user', 'update_user']) && $_SESSION['role'] !== 'admin') {
     http_response_code(403);
     echo json_encode(['error' => 'Forbidden: Only admin can manage users.']);
     exit;
@@ -120,4 +120,42 @@ switch ($action) {
             echo json_encode(['success' => true, 'message' => 'User deleted successfully.']);
         }
         break;
+
+    case 'change_my_password': // NEW ACTION
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $current_user_id = $_SESSION['user_id'];
+            $current_password = $input['current_password'] ?? '';
+            $new_password = $input['new_password'] ?? '';
+
+            if (empty($current_password) || empty($new_password)) {
+                http_response_code(400);
+                echo json_encode(['error' => 'Current and new passwords are required.']);
+                exit;
+            }
+            if (strlen($new_password) < 6) {
+                http_response_code(400);
+                echo json_encode(['error' => 'New password must be at least 6 characters long.']);
+                exit;
+            }
+
+            // Verify current password
+            $stmt = $pdo->prepare("SELECT password FROM users WHERE id = ?");
+            $stmt->execute([$current_user_id]);
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$user || !password_verify($current_password, $user['password'])) {
+                http_response_code(401);
+                echo json_encode(['error' => 'Invalid current password.']);
+                exit;
+            }
+
+            // Update password
+            $hashed_password = password_hash($new_password, PASSWORD_DEFAULT);
+            $stmt = $pdo->prepare("UPDATE users SET password = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?");
+            $stmt->execute([$hashed_password, $current_user_id]);
+
+            echo json_encode(['success' => true, 'message' => 'Password changed successfully.']);
+        }
+        break;
 }
+?>
