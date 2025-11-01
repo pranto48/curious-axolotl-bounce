@@ -27,7 +27,7 @@ portal_header("Our Products - IT Support BD Portal");
         <div class="mb-12">
             <h2 class="text-3xl font-bold text-blue-300 mb-6 text-center"><?= htmlspecialchars($category) ?></h2>
             <?php if ($category === 'AMPNM'): ?>
-                <div class="glass-card p-6 max-w-md mx-auto">
+                <div class="glass-card p-6 max-w-2xl mx-auto">
                     <h3 class="text-2xl font-semibold text-white mb-4">Select Your AMPNM License</h3>
                     <form action="cart.php" method="POST" class="space-y-4">
                         <div>
