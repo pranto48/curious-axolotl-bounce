@@ -59,33 +59,29 @@ function initUsers() {
     const loadMapPermissions = async (userId) => {
         mapPermissionsList.innerHTML = '<div class="text-center py-4"><div class="loader mx-auto w-4 h-4"></div><span class="ml-2 text-sm text-slate-400">Loading maps...</span></div>';
         try {
-            const { all_maps, user_map_ids } = await api.get('get_user_map_permissions', { user_id: userId });
+            // Changed API action to get_all_maps_with_user_permissions
+            const { all_maps, user_map_ids } = await api.get('get_all_maps_with_user_permissions', { user_id: userId });
             
-            console.log('DEBUG: Fetched all_maps:', all_maps);
-            console.log('DEBUG: Fetched user_map_ids:', user_map_ids);
-
             if (all_maps.length === 0) {
-                console.warn('DEBUG: No maps found in the database for permissions display.');
                 mapPermissionsList.innerHTML = '<p class="text-sm text-slate-500">No maps available to assign. Please create maps first.</p>';
                 return;
             }
-            if (user_map_ids.length === 0) {
-                console.log('DEBUG: User has no map permissions assigned yet.');
-            }
+
+            const isTargetUserAdmin = editRole.value === 'admin'; // Use the role from the edit modal
 
             mapPermissionsList.innerHTML = all_maps.map(map => {
-                const isChecked = user_map_ids.includes(map.id.toString()); // Keep toString() for robustness
-                console.log(`DEBUG: Map ${map.name} (ID: ${map.id}), isChecked: ${isChecked}`);
+                const isChecked = user_map_ids.includes(map.id.toString());
                 return `
                     <label class="flex items-center text-sm font-medium text-slate-400">
-                        <input type="checkbox" name="map_id[]" value="${map.id}" class="h-4 w-4 rounded border-slate-500 bg-slate-700 text-cyan-600 focus:ring-cyan-500" ${isChecked ? 'checked' : ''}>
-                        <span class="ml-2">${map.name}</span>
+                        <input type="checkbox" name="map_id[]" value="${map.id}" class="h-4 w-4 rounded border-slate-500 bg-slate-700 text-cyan-600 focus:ring-cyan-500" ${isChecked ? 'checked' : ''} ${isTargetUserAdmin ? 'disabled' : ''}>
+                        <span class="ml-2">${map.name} ${isTargetUserAdmin ? '(Admin - Always has access)' : ''}</span>
                     </label>
                 `;
             }).join('');
 
         } catch (error) {
             console.error('ERROR: Failed to load map permissions:', error);
+            window.notyf.error('Failed to load map permissions. Check console for details.');
             mapPermissionsList.innerHTML = '<p class="text-sm text-red-400">Failed to load map permissions. Check console for details.</p>';
         }
     };
@@ -167,7 +163,7 @@ function initUsers() {
                 throw new Error(userUpdateResult.error || 'Failed to update user details.');
             }
 
-            // Update map permissions
+            // Update map permissions using the new API action
             const mapPermissionsUpdateResult = await api.post('update_user_map_permissions', { user_id: userId, map_ids: selectedMapIds });
             if (!mapPermissionsUpdateResult.success) {
                 throw new Error(mapPermissionsUpdateResult.error || 'Failed to update map permissions.');

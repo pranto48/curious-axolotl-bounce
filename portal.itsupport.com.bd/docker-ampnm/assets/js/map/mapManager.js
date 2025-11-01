@@ -3,9 +3,11 @@ window.MapApp = window.MapApp || {};
 MapApp.mapManager = {
     createMap: async () => {
         const name = prompt("Enter a name for the new map:");
+        console.log("Attempting to create map with name:", name); // Added log
         if (name) { 
             try {
                 const response = await MapApp.api.post('create_map', { name }); 
+                console.log("Create map API response:", response); // Added log
                 if (response.success) {
                     await MapApp.mapManager.loadMaps(); 
                     MapApp.ui.els.mapSelector.value = response.map.id; 
@@ -18,6 +20,10 @@ MapApp.mapManager = {
                 console.error("Error creating map:", error);
                 window.notyf.error('An unexpected error occurred while creating the map.');
             }
+        } else if (name === null) { // User cancelled the prompt
+            window.notyf.info('Map creation cancelled.');
+        } else { // User entered an empty name
+            window.notyf.error('Map name cannot be empty.');
         }
     },
 
