@@ -17,8 +17,10 @@ services:
       - ADMIN_PASSWORD=password
       - LICENSE_API_URL=https://portal.itsupport.com.bd/verify_license.php
       - APP_LICENSE_KEY=
+    ports:
+      - "2266:2266" # Re-adding port mapping for app
     restart: unless-stopped
-    network_mode: "host"
+    # Removed network_mode: "host"
 
   db:
     image: mysql:8.0
