@@ -34,7 +34,7 @@ RUN set -eux; \
     apt-get clean; \
     rm -rf /var/lib/apt/lists/*
 
-# Configure GD extension with its dependencies (removing --with-zlib)
+# Configure GD extension with its dependencies (without --with-zlib)
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg
 
 # Install PHP extensions (including gd after configuration)
