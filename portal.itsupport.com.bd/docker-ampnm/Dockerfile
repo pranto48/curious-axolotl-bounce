@@ -1,7 +1,13 @@
 FROM php:8.2-apache
 
+# Set frontend to noninteractive to prevent prompts
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Update package lists
+RUN apt-get update
+
 # Install system dependencies
-RUN apt-get update && apt-get install -y \
+RUN apt-get install -y \
     git \
     unzip \
     libzip-dev \
@@ -15,6 +21,7 @@ RUN apt-get update && apt-get install -y \
     curl \
     mariadb-client-compat \
     zlib1g-dev \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 # Install PHP extensions
