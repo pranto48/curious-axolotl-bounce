@@ -16,7 +16,7 @@ if (!$is_admin) {
         <h1 class="text-3xl font-bold text-white mb-6">Create New Device</h1>
 
         <div class="max-w-md mx-auto bg-slate-800 border border-slate-700 rounded-lg shadow-xl p-6">
-            <form id="createDeviceForm" class="space-y-4">
+            <form id="createDeviceForm" class="space-y-4" method="POST">
                 <div>
                     <label for="deviceName" class="block text-sm font-medium text-slate-400 mb-1">Name</label>
                     <input type="text" id="deviceName" name="name" placeholder="Device Name" class="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2 focus:ring-2 focus:ring-cyan-500" required>
@@ -124,7 +124,7 @@ if (!$is_admin) {
                 </div>
                 <div>
                     <label for="showLivePing" class="flex items-center text-sm font-medium text-slate-400">
-                        <input type="checkbox" id="showLivePing" name="show_live_ping" class="h-4 w-4 rounded border-slate-500 bg-slate-700 text-cyan-600 focus:ring-cyan-500">
+                        <input type="checkbox" id="showLivePing" name="show_live_ping" class="h-4 w-4 rounded border-slate-500 bg-slate-700 text-cyan-600 focus:ring-2 focus:ring-cyan-500">
                         <span class="ml-2">Show live ping status on map</span>
                     </label>
                 </div>

@@ -71,7 +71,6 @@ function initCreateDevice() {
     };
 
     createDeviceForm.addEventListener('submit', async (e) => {
-        debugger; // This will pause execution here!
         console.log('Form submission event triggered.'); // Aggressive log 4
         e.preventDefault(); // Prevent default form submission (page reload)
         console.log('Default form submission prevented.');
@@ -143,7 +142,6 @@ function initCreateDevice() {
             saveDeviceBtn.innerHTML = '<i class="fas fa-plus mr-2"></i>Create Device';
         }
     });
-    console.log('Submit event listener attached to createDeviceForm.'); // Aggressive log 5
 
     deviceTypeSelect.addEventListener('change', (e) => toggleFields(e.target.value));
 
