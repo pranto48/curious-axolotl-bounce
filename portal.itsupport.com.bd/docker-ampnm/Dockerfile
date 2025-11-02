@@ -6,7 +6,7 @@ RUN apt-get update && apt-get install -y \
     unzip \
     libzip-dev \
     libpng-dev \
-    libjpeg-dev \
+    libjpeg-turbo-dev \
     libfreetype6-dev \
     libicu-dev \
     libonig-dev \
@@ -14,6 +14,7 @@ RUN apt-get update && apt-get install -y \
     nmap \
     curl \
     mariadb-client-compat \
+    zlib1g-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Install PHP extensions
