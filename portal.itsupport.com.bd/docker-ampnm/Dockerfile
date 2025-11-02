@@ -13,31 +13,15 @@ RUN apt-get update && apt-get install -y \
     libxml2-dev \
     nmap \
     curl \
-    libmariadb-dev \
-    libwebp-dev \
-    libcurl4-openssl-dev \
-    # Clean up
+    mariadb-client-compat \
     && rm -rf /var/lib/apt/lists/*
 
-# Configure PHP extensions
-RUN docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
-    && docker-php-ext-configure pdo_mysql --with-pdo-mysql=mysqlnd
-
 # Install PHP extensions
-RUN docker-php-ext-install -j$(nproc) gd pdo_mysql zip intl opcache bcmath exif curl
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install -j$(nproc) gd pdo_mysql zip intl opcache bcmath exif curl
 
 # Enable Apache modules
 RUN a2enmod rewrite
-
-# Install Composer
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
-
-# Copy application files from the current directory
-COPY . /var/www/html/
-
-# Install PHPMailer
-WORKDIR /var/www/html
-RUN composer require phpmailer/phpmailer
 
 # Copy the entrypoint script from the build context root
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
@@ -51,11 +35,9 @@ RUN chown -R www-data:www-data /var/www/html \
 EXPOSE 2266
 
 # Update Apache configuration to listen on 2266
-# Replace 'Listen 80' with 'Listen 2266' in ports.conf
-RUN sed -i 's/Listen 80/Listen 2266/' /etc/apache2/ports.conf \
+RUN echo "Listen 2266" >> /etc/apache2/ports.conf \
     && sed -i -e 's/VirtualHost \*:80/VirtualHost \*:2266/g' /etc/apache2/sites-available/000-default.conf \
-    && sed -i -e 's/VirtualHost \*:80/VirtualHost \*:2266/g' /etc/apache2/sites-enabled/000-default.conf \
-    && echo "ServerName localhost" >> /etc/apache2/apache2.conf
+    && sed -i -e 's/VirtualHost \*:80/VirtualHost \*:2266/g' /etc/apache2/sites-enabled/000-default.conf
 
 # Ensure the uploads directory exists and has correct permissions
 RUN mkdir -p /var/www/html/uploads/icons \
