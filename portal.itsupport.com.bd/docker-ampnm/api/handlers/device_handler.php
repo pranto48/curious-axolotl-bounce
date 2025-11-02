@@ -510,30 +510,49 @@ switch ($action) {
                 exit;
             }
 
-            $sql = "INSERT INTO devices (user_id, name, ip, check_port, type, description, map_id, x, y, ping_interval, icon_size, name_text_size, icon_url, warning_latency_threshold, warning_packetloss_threshold, critical_latency_threshold, critical_packetloss_threshold, show_live_ping) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-            $stmt = $pdo->prepare($sql);
-            $stmt->execute([
-                $current_user_id, $input['name'], $input['ip'] ?? null, $input['check_port'] ?? null, $input['type'], $input['description'] ?? null, $input['map_id'] ?? null,
-                $input['x'] ?? null, $input['y'] ?? null,
-                $input['ping_interval'] ?? null, $input['icon_size'] ?? 50, $input['name_text_size'] ?? 14, $input['icon_url'] ?? null,
-                $input['warning_latency_threshold'] ?? null,
-                $input['warning_packetloss_threshold'] ?? null,
-                $input['critical_latency_threshold'] ?? null,
-                $input['critical_packetloss_threshold'] ?? null,
-                ($input['show_live_ping'] ?? false) ? 1 : 0
-            ]);
-            $lastId = $pdo->lastInsertId();
-            // Fetch the newly created device, respecting admin's ability to see all
-            $sql = "SELECT * FROM devices WHERE id = ?";
-            $params = [$lastId];
-            if (!$is_admin) {
-                $sql .= " AND user_id = ?";
-                $params[] = $current_user_id;
+            try {
+                $pdo->beginTransaction(); // Start transaction
+
+                $sql = "INSERT INTO devices (user_id, name, ip, check_port, type, description, map_id, x, y, ping_interval, icon_size, name_text_size, icon_url, warning_latency_threshold, warning_packetloss_threshold, critical_latency_threshold, critical_packetloss_threshold, show_live_ping) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                $stmt = $pdo->prepare($sql);
+                $stmt->execute([
+                    $current_user_id, $input['name'], $input['ip'] ?? null, $input['check_port'] ?? null, $input['type'], $input['description'] ?? null, $input['map_id'] ?? null,
+                    $input['x'] ?? null, $input['y'] ?? null,
+                    $input['ping_interval'] ?? null, $input['icon_size'] ?? 50, $input['name_text_size'] ?? 14, $input['icon_url'] ?? null,
+                    $input['warning_latency_threshold'] ?? null,
+                    $input['warning_packetloss_threshold'] ?? null,
+                    $input['critical_latency_threshold'] ?? null,
+                    $input['critical_packetloss_threshold'] ?? null,
+                    ($input['show_live_ping'] ?? false) ? 1 : 0
+                ]);
+                $lastId = $pdo->lastInsertId();
+
+                // Fetch the newly created device, respecting admin's ability to see all
+                $sql = "SELECT * FROM devices WHERE id = ?";
+                $params = [$lastId];
+                if (!$is_admin) {
+                    $sql .= " AND user_id = ?";
+                    $params[] = $current_user_id;
+                }
+                $stmt = $pdo->prepare($sql);
+                $stmt->execute($params);
+                $device = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                $pdo->commit(); // Commit transaction
+
+                echo json_encode(['success' => true, 'device' => $device]);
+
+            } catch (PDOException $e) {
+                $pdo->rollBack(); // Rollback on error
+                error_log("PDOException in create_device: " . $e->getMessage());
+                http_response_code(500);
+                echo json_encode(['success' => false, 'error' => 'Database error: ' . $e->getMessage()]);
+            } catch (Exception $e) {
+                $pdo->rollBack(); // Rollback on other exceptions
+                error_log("Exception in create_device: " . $e->getMessage());
+                http_response_code(500);
+                echo json_encode(['success' => false, 'error' => 'Server error: ' . $e->getMessage()]);
             }
-            $stmt = $pdo->prepare($sql);
-            $stmt->execute($params);
-            $device = $stmt->fetch(PDO::FETCH_ASSOC);
-            echo json_encode(['success' => true, 'device' => $device]);
         }
         break;
 
