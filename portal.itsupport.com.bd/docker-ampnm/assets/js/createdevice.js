@@ -63,34 +63,47 @@ function initCreateDevice() {
     };
 
     createDeviceForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
+        console.log('Form submission event triggered.');
+        e.preventDefault(); // Prevent default form submission (page reload)
+        console.log('Default form submission prevented.');
+
         saveDeviceBtn.disabled = true;
         saveDeviceBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Creating...';
 
-        const formData = new FormData(createDeviceForm);
-        const data = Object.fromEntries(formData.entries());
-        data.show_live_ping = document.getElementById('showLivePing').checked;
+        // Explicitly collect data from form fields
+        const data = {
+            name: document.getElementById('deviceName').value,
+            ip: document.getElementById('deviceIp').value || null,
+            description: document.getElementById('deviceDescription').value || null,
+            check_port: document.getElementById('checkPort').value || null,
+            type: document.getElementById('deviceType').value,
+            map_id: document.getElementById('deviceMap').value || null,
+            icon_url: document.getElementById('icon_url').value || null,
+            ping_interval: document.getElementById('pingInterval').value || null,
+            warning_latency_threshold: document.getElementById('warning_latency_threshold').value || null,
+            warning_packetloss_threshold: document.getElementById('warning_packetloss_threshold').value || null,
+            critical_latency_threshold: document.getElementById('critical_latency_threshold').value || null,
+            critical_packetloss_threshold: document.getElementById('critical_packetloss_threshold').value || null,
+            icon_size: document.getElementById('iconSize').value || 50,
+            name_text_size: document.getElementById('nameTextSize').value || 14,
+            show_live_ping: document.getElementById('showLivePing').checked ? 1 : 0, // Ensure 1 or 0
+        };
 
-        // Convert empty strings to null for optional numeric fields
-        const numericFields = ['ping_interval', 'icon_size', 'name_text_size', 'warning_latency_threshold', 'warning_packetloss_threshold', 'critical_latency_threshold', 'critical_packetloss_threshold'];
-        for (const key in data) {
-            if (numericFields.includes(key) && data[key] === '') {
-                data[key] = null;
-            } else if (key === 'ip' && data[key] === '') {
-                data[key] = null;
-            } else if (key === 'check_port' && data[key] === '') {
-                data[key] = null;
-            } else if (key === 'icon_url' && data[key] === '') {
-                data[key] = null;
-            } else if (key === 'map_id' && data[key] === '') {
-                data[key] = null;
+        // Convert numeric fields from string to number, or null if empty
+        const numericFields = ['check_port', 'ping_interval', 'icon_size', 'name_text_size', 'warning_latency_threshold', 'warning_packetloss_threshold', 'critical_latency_threshold', 'critical_packetloss_threshold'];
+        numericFields.forEach(field => {
+            if (data[field] !== null && data[field] !== '') {
+                data[field] = Number(data[field]);
+            } else {
+                data[field] = null;
             }
-        }
+        });
+
+        console.log('Data to be sent to API:', data); // Log the final data object
 
         try {
             const result = await api.post('create_device', data);
-            console.log("API response for create_device:", result); // Added log for debugging
-            console.log("Result.success value:", result.success); // Explicitly log success property
+            console.log("API response for create_device:", result);
 
             if (result.success) {
                 window.notyf.success('Device created successfully!');
@@ -98,14 +111,13 @@ function initCreateDevice() {
                 toggleFields(deviceTypeSelect.value); // Reset fields visibility
                 iconPreviewWrapper.classList.add('hidden'); // Hide preview
                 iconUploadInput.value = ''; // Clear file input
-                // If an icon was uploaded, now update it
+
+                // Handle icon upload if a file was selected
                 if (iconUploadInput.files.length > 0) {
                     const uploadResult = await uploadIcon(result.device.id, iconUploadInput.files[0]);
                     if (!uploadResult.success) {
-                        // If icon upload failed, log it but don't prevent device creation success
                         console.error("Icon upload failed after device creation:", uploadResult.error);
-                        // Optionally, show a specific error for icon upload, but keep device creation as success
-                        // window.notyf.error(`Device created, but icon upload failed: ${uploadResult.error}`);
+                        window.notyf.error(`Device created, but icon upload failed: ${uploadResult.error}`);
                     }
                 }
                 // Redirect to devices.php after successful creation
