@@ -1,4 +1,6 @@
 function initCreateDevice() {
+    console.log('initCreateDevice function started.'); // Aggressive log 1
+
     const API_URL = 'api.php';
     const createDeviceForm = document.getElementById('createDeviceForm');
     const saveDeviceBtn = document.getElementById('saveDeviceBtn');
@@ -16,6 +18,12 @@ function initCreateDevice() {
     const iconPreviewWrapper = document.getElementById('icon_preview_wrapper');
     const iconPreview = document.getElementById('icon_preview');
     const deviceMapSelect = document.getElementById('deviceMap');
+
+    if (!createDeviceForm) {
+        console.error('ERROR: createDeviceForm element not found!'); // Aggressive log 2
+        return; // Stop execution if the form isn't found
+    }
+    console.log('createDeviceForm element found:', createDeviceForm); // Aggressive log 3
 
     const api = {
         get: (action, params = {}) => fetch(`${API_URL}?action=${action}&${new URLSearchParams(params)}`).then(res => res.json()),
@@ -63,7 +71,8 @@ function initCreateDevice() {
     };
 
     createDeviceForm.addEventListener('submit', async (e) => {
-        console.log('Form submission event triggered.');
+        debugger; // This will pause execution here!
+        console.log('Form submission event triggered.'); // Aggressive log 4
         e.preventDefault(); // Prevent default form submission (page reload)
         console.log('Default form submission prevented.');
 
@@ -134,6 +143,7 @@ function initCreateDevice() {
             saveDeviceBtn.innerHTML = '<i class="fas fa-plus mr-2"></i>Create Device';
         }
     });
+    console.log('Submit event listener attached to createDeviceForm.'); // Aggressive log 5
 
     deviceTypeSelect.addEventListener('change', (e) => toggleFields(e.target.value));
 
