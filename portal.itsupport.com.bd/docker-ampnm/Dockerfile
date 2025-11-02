@@ -20,6 +20,7 @@ RUN set -eux; \
         unzip \
         libzip-dev \
         libpng-dev \
+        libjpeg-dev \
         libjpeg-turbo-dev \
         libfreetype6-dev \
         libicu-dev \
@@ -28,7 +29,8 @@ RUN set -eux; \
         nmap \
         curl \
         mariadb-client-compat \
-        zlib1g-dev; \
+        zlib1g-dev \
+        libwebp-dev; \
     \
     apt-get clean; \
     rm -rf /var/lib/apt/lists/*
