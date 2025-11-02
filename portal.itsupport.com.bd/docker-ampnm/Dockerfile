@@ -21,7 +21,6 @@ RUN set -eux; \
         libzip-dev \
         libpng-dev \
         libjpeg-dev \
-        libjpeg-turbo-dev \
         libfreetype6-dev \
         libicu-dev \
         libonig-dev \
@@ -36,8 +35,7 @@ RUN set -eux; \
     rm -rf /var/lib/apt/lists/*
 
 # Install PHP extensions
-RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install -j$(nproc) gd pdo_mysql zip intl opcache bcmath exif curl
+RUN docker-php-ext-install -j$(nproc) gd --with-freetype --with-jpeg pdo_mysql zip intl opcache bcmath exif curl
 
 # Enable Apache modules
 RUN a2enmod rewrite
