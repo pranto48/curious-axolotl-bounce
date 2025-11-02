@@ -35,7 +35,7 @@ RUN set -eux; \
     rm -rf /var/lib/apt/lists/*
 
 # Install PHP extensions
-RUN docker-php-ext-install -j$(nproc) pdo_mysql zip intl opcache bcmath exif curl gd --with-freetype --with-jpeg
+RUN docker-php-ext-install -j$(nproc) pdo_mysql zip intl opcache bcmath exif curl gd --with-freetype --with-jpeg --with-zlib
 
 # Enable Apache modules
 RUN a2enmod rewrite
